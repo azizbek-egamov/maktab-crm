@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
 import Modal from '../../components/ui/Modal';
 import { formatPhoneInput, parsePhoneToApi, formatApiPhoneToUI } from '../../utils/phoneFormatter';
+import { MEDIA_BASE_URL } from '../../services/api';
 import './LeadForm.css';
 
 // Icons
@@ -62,7 +63,7 @@ const LeadForm = ({ isOpen, onClose, lead: initialLead, initialStageId, onSucces
         if (typeof path !== 'string') return '';
         if (path.startsWith('http')) return path;
         // Default backend media URL
-        return `https://momi.food707.uz${path}`;
+        return `${MEDIA_BASE_URL}${path}`;
     };
     const [deleting, setDeleting] = useState(false);
     const [stages, setStages] = useState([]);

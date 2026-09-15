@@ -1,25 +1,30 @@
 import axios from 'axios';
 
 // Dynamic API URL based on hostname and environment variables
-const getApiUrl = () => {
-    // 1. Check if VITE_API_URL is set in environment variables
-    if (import.meta.env.VITE_API_URL) {
+export const getApiUrl = () => {
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+
+    // 1. Local development
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+    }
+
+    // 2. Production domain (ardentsoft.uz)
+    if (hostname.includes('ardentsoft.uz')) {
+        return 'https://maktab.api.ardentsoft.uz/api';
+    }
+
+    // 3. Custom environment variable (if not localhost)
+    if (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) {
         return import.meta.env.VITE_API_URL;
     }
 
-    // 2. Fallback to dynamic URL based on hostname
-    const hostname = window.location.hostname;
-
-    // Cloudflare tunnel domain
-    if (hostname === 'drinks-por-valued-truly.trycloudflare.com') {
-        return 'https://penny-female-eliminate-precipitation.trycloudflare.com/api';
-    }
-
-    // Local development/production fallback
-    return 'https://momi.food707.uz/api';
+    // 4. Default Production API fallback
+    return 'https://maktab.api.ardentsoft.uz/api';
 };
 
-const API_URL = getApiUrl();
+export const API_URL = getApiUrl();
+export const MEDIA_BASE_URL = API_URL.replace(/\/api\/?$/, '');
 
 const api = axios.create({
     baseURL: API_URL,

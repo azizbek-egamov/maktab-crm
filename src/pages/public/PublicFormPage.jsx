@@ -3,8 +3,7 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { toast, Toaster } from 'sonner';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://momi.food707.uz/api';
-// const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+import { API_URL } from '../../services/api';
 
 // Inline styles for premium design
 const styles = {
