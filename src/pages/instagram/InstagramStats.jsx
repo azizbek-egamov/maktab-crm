@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
     Users, Eye, TrendingUp, Heart, MessageCircle, Bookmark,
     BarChart3, Image as ImageIcon, Video, Link2, RefreshCw, ExternalLink,
@@ -8,22 +9,11 @@ import {
     Layers, AlertCircle, X, HelpCircle
 } from 'lucide-react';
 import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    BarChart, Bar, Cell
+    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { instagramService } from '../../services/instagram';
 import { toast } from 'sonner';
 import './InstagramStats.css';
-
-const CHART_COLORS = {
-    primary: '#e1306c',
-    secondary: '#833ab4',
-    accent: '#fd1d1d',
-    orange: '#f77737',
-    yellow: '#fcaf45',
-    teal: '#00c49f',
-    blue: '#0088fe',
-};
 
 const InstagramStats = () => {
     // Navigation & Global state
@@ -60,8 +50,34 @@ const InstagramStats = () => {
     // Tab 4: CRM Leads Data
     const [leadsData, setLeadsData] = useState(null);
 
-    // Modal
+    // Modal state
     const [selectedPost, setSelectedPost] = useState(null);
+    const [videoError, setVideoError] = useState(false);
+
+    useEffect(() => {
+        setVideoError(false);
+    }, [selectedPost]);
+
+    // Modal body lock & Escape key listener
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                setSelectedPost(null);
+            }
+        };
+
+        if (selectedPost) {
+            document.body.style.overflow = 'hidden';
+            window.addEventListener('keydown', handleKeyDown);
+        } else {
+            document.body.style.overflow = '';
+        }
+
+        return () => {
+            document.body.style.overflow = '';
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [selectedPost]);
 
     // Initial load
     useEffect(() => {
@@ -99,7 +115,6 @@ const InstagramStats = () => {
 
             if (accountsList.length > 0) {
                 setSelectedAccountId(accountsList[0].id);
-                // Load profile
                 const profRes = await instagramService.getProfile(accountsList[0].id);
                 setProfile(profRes.data);
             }
@@ -182,7 +197,6 @@ const InstagramStats = () => {
             const res = await instagramService.syncNow(selectedAccountId);
             if (res.data && res.data.success) {
                 toast.success(res.data.message || "Barcha postlar va statistika yangilandi!");
-                // Refresh active tab
                 if (activeTab === 'overview') loadSummaryData();
                 else if (activeTab === 'reels_studio') loadReelsStudioData();
                 else if (activeTab === 'audience') loadAudienceData();
@@ -217,7 +231,7 @@ const InstagramStats = () => {
         loadReelsStudioData();
     };
 
-    // Format number
+    // Format numbers
     const formatNum = (num) => {
         if (!num && num !== 0) return '0';
         if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
@@ -225,7 +239,7 @@ const InstagramStats = () => {
         return num.toLocaleString();
     };
 
-    // Performance badge component
+    // Performance badge render
     const renderBadge = (badge) => {
         if (badge === 'viral') {
             return <span className="ig-badge ig-badge-viral"><Sparkles size={12} /> Virusli</span>;
@@ -294,7 +308,6 @@ const InstagramStats = () => {
                 </div>
 
                 <div className="ig-header-actions">
-                    {/* Period selector */}
                     {activeTab === 'overview' && (
                         <div className="ig-period-pills">
                             {[
@@ -314,7 +327,6 @@ const InstagramStats = () => {
                         </div>
                     )}
 
-                    {/* Sync Button */}
                     <button
                         onClick={handleSyncNow}
                         disabled={syncing}
@@ -367,7 +379,6 @@ const InstagramStats = () => {
                     <div className="ig-overview-section">
                         {/* 4 Smart KPI Cards */}
                         <div className="ig-kpi-grid">
-                            {/* Followers */}
                             <div className="ig-kpi-card">
                                 <div className="ig-kpi-header">
                                     <span className="ig-kpi-label">Jami Obunachilar</span>
@@ -384,7 +395,6 @@ const InstagramStats = () => {
                                 </div>
                             </div>
 
-                            {/* Reach */}
                             <div className="ig-kpi-card">
                                 <div className="ig-kpi-header">
                                     <span className="ig-kpi-label">Haqiqiy Qamrov (Reach)</span>
@@ -401,7 +411,6 @@ const InstagramStats = () => {
                                 </div>
                             </div>
 
-                            {/* Total Interactions */}
                             <div className="ig-kpi-card">
                                 <div className="ig-kpi-header">
                                     <span className="ig-kpi-label">Jami Reaksiyalar</span>
@@ -417,7 +426,6 @@ const InstagramStats = () => {
                                 </div>
                             </div>
 
-                            {/* Engagement Rate */}
                             <div className="ig-kpi-card">
                                 <div className="ig-kpi-header">
                                     <span className="ig-kpi-label">O'rtacha Faollik (ER)</span>
@@ -437,7 +445,6 @@ const InstagramStats = () => {
 
                         {/* Charts Row */}
                         <div className="ig-charts-row">
-                            {/* Area Chart: Reach & Interactions */}
                             <div className="ig-card ig-chart-card">
                                 <div className="ig-card-header">
                                     <div>
@@ -518,7 +525,6 @@ const InstagramStats = () => {
 
                         {/* Best Time Heatmap & AI Recommendations */}
                         <div className="ig-bottom-grid">
-                            {/* Best Time Heatmap */}
                             <div className="ig-card ig-heatmap-card">
                                 <div className="ig-card-header">
                                     <div>
@@ -576,7 +582,6 @@ const InstagramStats = () => {
                                 </div>
                             </div>
 
-                            {/* Smart AI / Marketing Recommendations */}
                             <div className="ig-card ig-ai-card">
                                 <div className="ig-card-header">
                                     <div>
@@ -619,7 +624,16 @@ const InstagramStats = () => {
                                 {summary.top_posts?.map(post => (
                                     <div key={post.id} className="ig-mini-post-card" onClick={() => setSelectedPost(post)}>
                                         <div className="ig-mini-thumb-wrap">
-                                            <img src={post.thumbnail_url || post.media_url} alt="Post" className="ig-mini-thumb" />
+                                            <img
+                                                src={post.thumbnail_url || post.media_url}
+                                                alt="Post"
+                                                className="ig-mini-thumb"
+                                                onError={(e) => {
+                                                    if (post.thumbnail_url && e.target.src !== post.thumbnail_url) {
+                                                        e.target.src = post.thumbnail_url;
+                                                    }
+                                                }}
+                                            />
                                             {post.media_type === 'VIDEO' && (
                                                 <div className="ig-play-overlay">
                                                     <Play size={18} fill="#fff" />
@@ -665,7 +679,6 @@ const InstagramStats = () => {
                                 )}
                             </form>
 
-                            {/* Format Pills */}
                             <div className="ig-filter-group">
                                 <span className="ig-filter-label">Format:</span>
                                 <div className="ig-filter-pills">
@@ -686,7 +699,6 @@ const InstagramStats = () => {
                                 </div>
                             </div>
 
-                            {/* Badge Filter */}
                             <div className="ig-filter-group">
                                 <span className="ig-filter-label">Samaradorlik:</span>
                                 <div className="ig-filter-pills">
@@ -707,7 +719,6 @@ const InstagramStats = () => {
                                 </div>
                             </div>
 
-                            {/* Sort Dropdown */}
                             <div className="ig-sort-wrap">
                                 <span className="ig-filter-label">Saralash:</span>
                                 <select
@@ -755,6 +766,11 @@ const InstagramStats = () => {
                                                 alt="Post thumbnail"
                                                 className="ig-media-thumb"
                                                 loading="lazy"
+                                                onError={(e) => {
+                                                    if (item.thumbnail_url && e.target.src !== item.thumbnail_url) {
+                                                        e.target.src = item.thumbnail_url;
+                                                    }
+                                                }}
                                             />
                                             {item.media_type === 'VIDEO' && (
                                                 <div className="ig-card-play-icon">
@@ -834,7 +850,6 @@ const InstagramStats = () => {
                 {activeTab === 'audience' && audienceData && (
                     <div className="ig-audience-section">
                         <div className="ig-audience-grid">
-                            {/* City Breakdown Card */}
                             <div className="ig-card ig-audience-cities-card">
                                 <div className="ig-card-header">
                                     <div>
@@ -872,7 +887,6 @@ const InstagramStats = () => {
                                 </div>
                             </div>
 
-                            {/* Geography Strategy Insights */}
                             <div className="ig-card ig-audience-insights-card">
                                 <div className="ig-card-header">
                                     <h3 className="ig-card-title flex items-center gap-2">
@@ -905,7 +919,6 @@ const InstagramStats = () => {
                 {/* ══════════════ TAB 4: CRM LEAD CONVERSION ══════════════ */}
                 {activeTab === 'leads' && leadsData && (
                     <div className="ig-leads-section">
-                        {/* Funnel KPI Cards */}
                         <div className="ig-kpi-grid">
                             <div className="ig-kpi-card">
                                 <div className="ig-kpi-header">
@@ -1021,24 +1034,60 @@ const InstagramStats = () => {
                 )}
             </main>
 
-            {/* ── 4. Detailed Post Modal ── */}
-            {selectedPost && (
+            {/* ── 4. Detailed Post Modal (Mounted to document.body via Portal) ── */}
+            {selectedPost && createPortal(
                 <div className="ig-modal-backdrop" onClick={() => setSelectedPost(null)}>
                     <div className="ig-modal-box" onClick={(e) => e.stopPropagation()}>
-                        <button className="ig-modal-close" onClick={() => setSelectedPost(null)}>
+                        <button
+                            className="ig-modal-close"
+                            onClick={() => setSelectedPost(null)}
+                            aria-label="Yopish"
+                        >
                             <X size={20} />
                         </button>
 
                         <div className="ig-modal-grid">
                             <div className="ig-modal-media-col">
-                                <img
-                                    src={selectedPost.media_url || selectedPost.thumbnail_url}
-                                    alt="Post Full"
-                                    className="ig-modal-img"
-                                />
+                                {selectedPost.media_type === 'VIDEO' ? (
+                                    selectedPost.media_url && !videoError ? (
+                                        <video
+                                            key={selectedPost.id}
+                                            src={selectedPost.media_url}
+                                            poster={selectedPost.thumbnail_url}
+                                            controls
+                                            playsInline
+                                            autoPlay
+                                            muted
+                                            className="ig-modal-video"
+                                            onError={() => setVideoError(true)}
+                                        />
+                                    ) : (
+                                        <img
+                                            src={selectedPost.thumbnail_url || selectedPost.media_url}
+                                            alt="Reels Thumbnail"
+                                            className="ig-modal-img"
+                                            onError={(e) => {
+                                                if (selectedPost.media_url && e.target.src !== selectedPost.media_url) {
+                                                    e.target.src = selectedPost.media_url;
+                                                }
+                                            }}
+                                        />
+                                    )
+                                ) : (
+                                    <img
+                                        src={selectedPost.media_url || selectedPost.thumbnail_url}
+                                        alt="Post Full"
+                                        className="ig-modal-img"
+                                        onError={(e) => {
+                                            if (selectedPost.thumbnail_url && e.target.src !== selectedPost.thumbnail_url) {
+                                                e.target.src = selectedPost.thumbnail_url;
+                                            }
+                                        }}
+                                    />
+                                )}
                                 {selectedPost.media_type === 'VIDEO' && (
                                     <div className="ig-modal-video-badge">
-                                        <Video size={16} /> <span>Reels Formati</span>
+                                        <Video size={14} /> <span>Reels Formati</span>
                                     </div>
                                 )}
                             </div>
@@ -1047,15 +1096,19 @@ const InstagramStats = () => {
                                 <div className="ig-modal-header">
                                     <div className="ig-modal-badge-row">
                                         {renderBadge(selectedPost.performance_badge)}
-                                        <span className="ig-modal-type">{selectedPost.media_type}</span>
+                                        <span className="ig-modal-type">
+                                            {selectedPost.media_type === 'VIDEO' ? 'Reels' : selectedPost.media_type === 'IMAGE' ? 'Rasm' : 'Karusel'}
+                                        </span>
                                     </div>
                                     <span className="ig-modal-date">
-                                        {new Date(selectedPost.timestamp).toLocaleString('uz-UZ')}
+                                        {new Date(selectedPost.timestamp).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                 </div>
 
                                 <div className="ig-modal-caption-box">
-                                    <p className="ig-modal-caption-text">{selectedPost.caption || "Izoh mavjud emas"}</p>
+                                    <p className="ig-modal-caption-text">
+                                        {selectedPost.caption || "Ushbu post uchun matnli izoh mavjud emas."}
+                                    </p>
                                 </div>
 
                                 <div className="ig-modal-metrics-grid">
@@ -1068,12 +1121,20 @@ const InstagramStats = () => {
                                         <span className="ig-m-val">💬 {formatNum(selectedPost.comments_count)}</span>
                                     </div>
                                     <div className="ig-modal-metric-card">
-                                        <span className="ig-m-label">Qamrov</span>
+                                        <span className="ig-m-label">Qamrov (Reach)</span>
                                         <span className="ig-m-val">👥 {formatNum(selectedPost.reach)}</span>
                                     </div>
                                     <div className="ig-modal-metric-card">
-                                        <span className="ig-m-label">Faollik</span>
+                                        <span className="ig-m-label">Faollik (ER)</span>
                                         <span className="ig-m-val">⚡ {selectedPost.engagement_rate}%</span>
+                                    </div>
+                                    <div className="ig-modal-metric-card">
+                                        <span className="ig-m-label">Saqlanganlar</span>
+                                        <span className="ig-m-val">🔖 {formatNum(selectedPost.saved)}</span>
+                                    </div>
+                                    <div className="ig-modal-metric-card">
+                                        <span className="ig-m-label">Ulashishlar</span>
+                                        <span className="ig-m-val">↗️ {formatNum(selectedPost.shares)}</span>
                                     </div>
                                 </div>
 
@@ -1092,7 +1153,8 @@ const InstagramStats = () => {
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
