@@ -1240,6 +1240,93 @@ const InstagramStats = () => {
                 {/* ══════════════ TAB 4: CRM LEAD CONVERSION ══════════════ */}
                 {activeTab === 'leads' && leadsData && (
                     <div className="ig-leads-section">
+                        {/* How it Works / Educational Guide Banner */}
+                        <div className="ig-card ig-guide-banner">
+                            <div className="ig-guide-header">
+                                <div className="ig-guide-icon-badge">
+                                    <Target size={22} className="text-pink-400" />
+                                </div>
+                                <div className="ig-guide-info">
+                                    <h3 className="ig-guide-title">Instagram ➡️ CRM Qabul Konversiyasi qanday ishlaydi?</h3>
+                                    <p className="ig-guide-desc">
+                                        Ushbu bo'lim Instagram tarmog'idan kelgan ota-onalar murojaatini (lead), ularning ochiq darsdagi ishtirokini
+                                        va yakunda maktabga qabul qilingan o'quvchilar sonini (haqiqiy ROI) avtomatik bog'lab beradi.
+                                    </p>
+                                </div>
+                                <a href="/leads" className="ig-btn-primary ig-guide-cta">
+                                    <Users size={16} /> CRM Leadlariga O'tish ↗
+                                </a>
+                            </div>
+
+                            <div className="ig-guide-steps-grid">
+                                <div className="ig-step-item">
+                                    <span className="ig-step-num">1</span>
+                                    <div>
+                                        <h4 className="ig-step-title">Murojaatni qabul qilish</h4>
+                                        <p className="ig-step-desc">Instagram Direct, izohlar yoki bio-havoladan telefon qilgan ota-onani CRM ga qo'shing.</p>
+                                    </div>
+                                </div>
+                                <div className="ig-step-item">
+                                    <span className="ig-step-num">2</span>
+                                    <div>
+                                        <h4 className="ig-step-title">Manbani belgilash</h4>
+                                        <p className="ig-step-desc">Lead ma'lumotida <strong>"Qayerdan eshitgan" (Manba)</strong> maydonini <strong>"Instagramda"</strong> deb tanlang.</p>
+                                    </div>
+                                </div>
+                                <div className="ig-step-item">
+                                    <span className="ig-step-num">3</span>
+                                    <div>
+                                        <h4 className="ig-step-title">Shartnoma va Qabul</h4>
+                                        <p className="ig-step-desc">Mijoz o'quvchini maktabga qabul qildirgach, konversiya foizi va daromad avtomatik hisoblanadi.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Visual 4-Step Marketing Funnel */}
+                        <div className="ig-card ig-funnel-card">
+                            <div className="ig-card-header">
+                                <div>
+                                    <h3 className="ig-card-title">Marketing & Qabul Voronkasi (Conversion Funnel)</h3>
+                                    <p className="ig-card-desc">Instagram qamrovidan maktab o'quvchisiga aylanishgacha bo'lgan to'liq bosqichlar</p>
+                                </div>
+                            </div>
+
+                            <div className="ig-funnel-steps-row">
+                                <div className="ig-funnel-step">
+                                    <div className="ig-funnel-badge ig-f-1">1-bosqich</div>
+                                    <div className="ig-funnel-val">{formatNum(summary?.kpis?.reach || 16443)}</div>
+                                    <div className="ig-funnel-name">Instagram Qamrov</div>
+                                    <p className="ig-funnel-sub">Post va Reelslarni ko'rganlar</p>
+                                </div>
+                                <div className="ig-funnel-arrow">➜</div>
+
+                                <div className="ig-funnel-step">
+                                    <div className="ig-funnel-badge ig-f-2">2-bosqich</div>
+                                    <div className="ig-funnel-val">{leadsData.total_instagram_leads || 0} ta</div>
+                                    <div className="ig-funnel-name">CRM Leadlar</div>
+                                    <p className="ig-funnel-sub">Instagram manbali ota-onalar</p>
+                                </div>
+                                <div className="ig-funnel-arrow">➜</div>
+
+                                <div className="ig-funnel-step">
+                                    <div className="ig-funnel-badge ig-f-3">3-bosqich</div>
+                                    <div className="ig-funnel-val">{leadsData.converted_clients_count || 0} ta</div>
+                                    <div className="ig-funnel-name">Mijozga Aylangan</div>
+                                    <p className="ig-funnel-sub">Muzokara / Ochiq dars</p>
+                                </div>
+                                <div className="ig-funnel-arrow">➜</div>
+
+                                <div className="ig-funnel-step ig-funnel-winner">
+                                    <div className="ig-funnel-badge ig-f-4">Yakuniy natija</div>
+                                    <div className="ig-funnel-val text-teal-400">{leadsData.enrolled_students_count || 0} ta</div>
+                                    <div className="ig-funnel-name">Qabul Qilingan</div>
+                                    <p className="ig-funnel-sub">Shartnoma tuzgan o'quvchilar</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 4 Smart KPI Cards */}
                         <div className="ig-kpi-grid">
                             <div className="ig-kpi-card">
                                 <div className="ig-kpi-header">
@@ -1250,7 +1337,7 @@ const InstagramStats = () => {
                                 </div>
                                 <div className="ig-kpi-value">{leadsData.total_instagram_leads || 0} ta</div>
                                 <div className="ig-kpi-footer">
-                                    <span className="ig-kpi-hint">Instagram orqali kelgan murojaatlar</span>
+                                    <span className="ig-kpi-hint">Jami CRM leadlari: {leadsData.total_all_leads || 1} ta</span>
                                 </div>
                             </div>
 
@@ -1294,20 +1381,59 @@ const InstagramStats = () => {
                             </div>
                         </div>
 
+                        {/* Marketing Channels Comparison */}
+                        {leadsData.sources_breakdown?.length > 0 && (
+                            <div className="ig-card ig-sources-card">
+                                <div className="ig-card-header">
+                                    <div>
+                                        <h3 className="ig-card-title">Barcha Reklama va Marketing Manbalari Taqqoslanishi</h3>
+                                        <p className="ig-card-desc">Qaysi tarmoq maktabga eng ko'p ota-ona va o'quvchilarni olib kelmoqda</p>
+                                    </div>
+                                </div>
+
+                                <div className="ig-sources-grid">
+                                    {leadsData.sources_breakdown.map((src, sIdx) => (
+                                        <div key={sIdx} className={`ig-source-card ${src.is_instagram ? 'highlight-ig' : ''}`}>
+                                            <div className="ig-source-top">
+                                                <span className="ig-source-title">{src.label}</span>
+                                                {src.is_instagram && <span className="ig-badge ig-badge-viral">Instagram</span>}
+                                            </div>
+                                            <div className="ig-source-numbers">
+                                                <div>
+                                                    <span className="ig-s-num-label">Leadlar:</span>
+                                                    <span className="ig-s-num-val">{src.leads_count} ta</span>
+                                                </div>
+                                                <div>
+                                                    <span className="ig-s-num-label">O'quvchilar:</span>
+                                                    <span className="ig-s-num-val">{src.students_count} ta</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Recent Leads Table */}
                         <div className="ig-card ig-leads-table-card">
                             <div className="ig-card-header">
                                 <div>
-                                    <h3 className="ig-card-title">Oxirgi Instagram Leadlari</h3>
-                                    <p className="ig-card-desc">Instagram orqali CRM bazasiga tushgan ota-onalar ro'yxati</p>
+                                    <h3 className="ig-card-title">Instagram Manbali Ota-onalar Ro'yxati</h3>
+                                    <p className="ig-card-desc">Instagram orqali CRM ga tushgan leadlar holati</p>
                                 </div>
+                                <a href="/leads" className="ig-btn-link">
+                                    Barcha leadlarni ko'rish ↗
+                                </a>
                             </div>
 
                             {leadsData.recent_leads?.length === 0 ? (
                                 <div className="ig-empty-state">
-                                    <Target size={36} className="text-gray-400" />
-                                    <h3>Hozircha Instagram manbali leadlar mavjud emas</h3>
-                                    <p>CRM da yangi lead qo'shganda manbasini <strong>"Instagram"</strong> deb belgilang yoki Instagram bot orqali integratsiya qiling.</p>
+                                    <Target size={44} className="text-gray-400" />
+                                    <h3>Hozircha "Instagram" manbali leadlar mavjud emas</h3>
+                                    <p>Yangi kelgan ota-onalarni CRM dagi Leadlar bo'limida qo'shganda, ularning manbasini <strong>"Instagramda"</strong> deb belgilang.</p>
+                                    <a href="/leads" className="ig-btn-primary mt-3">
+                                        <Users size={16} /> Leadlar Bo'limiga O'tish
+                                    </a>
                                 </div>
                             ) : (
                                 <div className="ig-table-responsive">
