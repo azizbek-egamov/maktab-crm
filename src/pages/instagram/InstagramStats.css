@@ -335,6 +335,62 @@
     background: rgba(239, 68, 68, 0.3);
 }
 
+/* ── Period Active Banner ── */
+.ig-period-active-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    background: linear-gradient(135deg, rgba(225, 48, 108, 0.12), rgba(131, 58, 180, 0.12));
+    border: 1px solid rgba(225, 48, 108, 0.25);
+    border-radius: 12px;
+    padding: 12px 18px;
+    margin-bottom: 20px;
+    animation: fadeIn 0.25s ease;
+}
+
+.ig-banner-text {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #f1f5f9;
+}
+
+.ig-banner-text strong {
+    color: #ff758c;
+}
+
+.ig-banner-stats {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #cbd5e1;
+}
+
+.ig-banner-reset-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #e2e8f0;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ig-banner-reset-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #f87171;
+    color: #ffffff;
+}
+
 /* ── KPI Grid ── */
 .ig-kpi-grid {
     display: grid;

@@ -615,21 +615,37 @@ const InstagramStats = () => {
                 {/* ══════════════ TAB 1: EXECUTIVE OVERVIEW ══════════════ */}
                 {activeTab === 'overview' && summary && (
                     <div className="ig-overview-section">
+                        {/* Period Active Banner */}
+                        <div className="ig-period-active-banner">
+                            <div className="ig-banner-text">
+                                <Calendar size={16} className="text-pink-400" />
+                                <span>
+                                    Tanlangan oraliq: <strong>{datePreset === 'custom' ? `${appliedDateFrom || customDateFrom} — ${appliedDateTo || customDateTo}` : DATE_PRESETS.find(d => d.key === datePreset)?.label}</strong>
+                                    {' '}• <strong>{summary.kpis?.period_posts || 0} ta post</strong> topildi (jami {summary.kpis?.total_posts || 84} tadan)
+                                </span>
+                            </div>
+                            <div className="ig-banner-stats">
+                                <span>❤️ {formatNum(summary.kpis?.likes)} layk</span>
+                                <span>💬 {formatNum(summary.kpis?.comments)} izoh</span>
+                                <span>👥 {formatNum(summary.kpis?.reach)} qamrov</span>
+                            </div>
+                        </div>
+
                         {/* 4 Smart KPI Cards */}
                         <div className="ig-kpi-grid">
                             <div className="ig-kpi-card">
                                 <div className="ig-kpi-header">
-                                    <span className="ig-kpi-label">Jami Obunachilar</span>
+                                    <span className="ig-kpi-label">Tanlangan Davrda Postlar</span>
                                     <div className="ig-kpi-icon-wrap ig-icon-purple">
-                                        <Users size={20} />
+                                        <Video size={20} />
                                     </div>
                                 </div>
-                                <div className="ig-kpi-value">{formatNum(summary.kpis?.followers || 816)}</div>
+                                <div className="ig-kpi-value">{summary.kpis?.period_posts || 0} ta</div>
                                 <div className="ig-kpi-footer">
                                     <span className="ig-trend-badge positive">
-                                        <ArrowUpRight size={14} /> +{summary.kpis?.period_posts || 10} ta post
+                                        <ArrowUpRight size={14} /> Jami: {summary.kpis?.total_posts || 84} tadan
                                     </span>
-                                    <span className="ig-kpi-hint">tanlangan davrda</span>
+                                    <span className="ig-kpi-hint">faol kontentlar</span>
                                 </div>
                             </div>
 
@@ -640,14 +656,12 @@ const InstagramStats = () => {
                                         <Eye size={20} />
                                     </div>
                                 </div>
-                                <div className="ig-kpi-value">{formatNum(summary.kpis?.reach || 2022)}</div>
+                                <div className="ig-kpi-value">{formatNum(summary.kpis?.reach || 0)}</div>
                                 <div className="ig-kpi-footer">
                                     <span className="ig-trend-badge neutral">
                                         <Activity size={14} /> Noyob ko'rishlar
                                     </span>
-                                    <span className="ig-kpi-hint">
-                                        {summary.date_from && summary.date_to ? `${summary.date_from} ~ ${summary.date_to}` : datePreset}
-                                    </span>
+                                    <span className="ig-kpi-hint">tanlangan oraliqda</span>
                                 </div>
                             </div>
 
@@ -658,12 +672,12 @@ const InstagramStats = () => {
                                         <Zap size={20} />
                                     </div>
                                 </div>
-                                <div className="ig-kpi-value">{formatNum(summary.kpis?.total_interactions || 231)}</div>
+                                <div className="ig-kpi-value">{formatNum(summary.kpis?.total_interactions || 0)}</div>
                                 <div className="ig-kpi-footer">
-                                    <span className="ig-pill-detail">❤️ {summary.kpis?.likes || 0}</span>
-                                    <span className="ig-pill-detail">💬 {summary.kpis?.comments || 0}</span>
-                                    <span className="ig-pill-detail">🔖 {summary.kpis?.saved || 0}</span>
-                                    <span className="ig-pill-detail">↗️ {summary.kpis?.shares || 0}</span>
+                                    <span className="ig-pill-detail">❤️ {formatNum(summary.kpis?.likes)}</span>
+                                    <span className="ig-pill-detail">💬 {formatNum(summary.kpis?.comments)}</span>
+                                    <span className="ig-pill-detail">🔖 {formatNum(summary.kpis?.saved)}</span>
+                                    <span className="ig-pill-detail">↗️ {formatNum(summary.kpis?.shares)}</span>
                                 </div>
                             </div>
 
@@ -674,7 +688,7 @@ const InstagramStats = () => {
                                         <TrendingUp size={20} />
                                     </div>
                                 </div>
-                                <div className="ig-kpi-value">{summary.kpis?.avg_engagement_rate || 2.83}%</div>
+                                <div className="ig-kpi-value">{summary.kpis?.avg_engagement_rate || 0}%</div>
                                 <div className="ig-kpi-footer">
                                     <span className="ig-trend-badge positive">
                                         <CheckCircle2 size={14} /> Yuqori faollik
