@@ -287,17 +287,45 @@ const InstagramStats = () => {
         }
     };
 
-    const handleApplyCustomDates = () => {
-        if (!customDateFrom && !customDateTo) {
-            toast.warning("Iltimos, kamida bitta sana kiriting");
-            return;
+    const handleSelectPreset = (presetKey) => {
+        setDatePreset(presetKey);
+        if (presetKey === 'custom') {
+            const todayStr = new Date().toISOString().slice(0, 10);
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+            const from = customDateFrom || thirtyDaysAgo;
+            const to = customDateTo || todayStr;
+            setCustomDateFrom(from);
+            setCustomDateTo(to);
+            setAppliedDateFrom(from);
+            setAppliedDateTo(to);
+        } else {
+            setAppliedDateFrom('');
+            setAppliedDateTo('');
         }
-        if (customDateFrom && customDateTo && customDateFrom > customDateTo) {
+        setReelsPage(1);
+    };
+
+    const handleApplyCustomDates = () => {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        
+        let from = customDateFrom;
+        let to = customDateTo;
+
+        if (!from && !to) {
+            from = thirtyDaysAgo;
+            to = todayStr;
+            setCustomDateFrom(from);
+            setCustomDateTo(to);
+        }
+
+        if (from && to && from > to) {
             toast.error("Boshlang'ich sana tugash sanasidan katta bo'lishi mumkin emas");
             return;
         }
-        setAppliedDateFrom(customDateFrom);
-        setAppliedDateTo(customDateTo);
+
+        setAppliedDateFrom(from || '');
+        setAppliedDateTo(to || '');
         setReelsPage(1);
         toast.success("Sana filtri qo'llandi");
     };
@@ -309,6 +337,7 @@ const InstagramStats = () => {
         setAppliedDateTo('');
         setDatePreset('30d');
         setReelsPage(1);
+        toast.info("Standart davrga qaytarildi (30 kun)");
     };
 
     const handleResetAllFilters = () => {
@@ -527,14 +556,7 @@ const InstagramStats = () => {
                                 <button
                                     key={item.key}
                                     className={`ig-period-btn ${datePreset === item.key ? 'active' : ''}`}
-                                    onClick={() => {
-                                        setDatePreset(item.key);
-                                        if (item.key !== 'custom') {
-                                            setAppliedDateFrom('');
-                                            setAppliedDateTo('');
-                                        }
-                                        setReelsPage(1);
-                                    }}
+                                    onClick={() => handleSelectPreset(item.key)}
                                 >
                                     {item.label}
                                 </button>
@@ -550,7 +572,14 @@ const InstagramStats = () => {
                                 <input
                                     type="date"
                                     value={customDateFrom}
-                                    onChange={(e) => setCustomDateFrom(e.target.value)}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setCustomDateFrom(val);
+                                        if (val) {
+                                            setAppliedDateFrom(val);
+                                            setReelsPage(1);
+                                        }
+                                    }}
                                     className="ig-date-input"
                                 />
                             </div>
@@ -559,18 +588,23 @@ const InstagramStats = () => {
                                 <input
                                     type="date"
                                     value={customDateTo}
-                                    onChange={(e) => setCustomDateTo(e.target.value)}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setCustomDateTo(val);
+                                        if (val) {
+                                            setAppliedDateTo(val);
+                                            setReelsPage(1);
+                                        }
+                                    }}
                                     className="ig-date-input"
                                 />
                             </div>
                             <button onClick={handleApplyCustomDates} className="ig-btn-apply-date">
                                 Qo'llash
                             </button>
-                            {(appliedDateFrom || appliedDateTo) && (
-                                <button onClick={handleClearCustomDates} className="ig-btn-clear-date" title="Tozalash">
-                                    <X size={15} />
-                                </button>
-                            )}
+                            <button onClick={handleClearCustomDates} className="ig-btn-clear-date" title="Tozalash">
+                                <X size={15} />
+                            </button>
                         </div>
                     )}
                 </div>
