@@ -21,14 +21,33 @@ export const instagramService = {
         return api.post('/instagram/disconnect/', { account_id: accountId });
     },
 
-    // Insights statistika
-    getStats: async (period = 'day', accountId = null) => {
-        return api.get('/instagram/stats/', { params: { period, account_id: accountId } });
+    // 1. Dashboard Executive Summary (KPIs, Charts, Heatmap, Format Comparison, AI Advice)
+    getSummary: async (period = '30d', accountId = null) => {
+        return api.get('/instagram/summary/', { params: { period, account_id: accountId } });
     },
 
-    // Media (postlar) ro'yxati
-    getMedia: async (limit = 20, accountId = null) => {
-        return api.get('/instagram/media/', { params: { limit, account_id: accountId } });
+    // 2. Reels & Kontent Studio (Kengaytirilgan Filtrlar, Qidiruv, Pagination)
+    getReelsStudio: async (params = {}) => {
+        return api.get('/instagram/reels-studio/', { params });
+    },
+
+    // 3. Auditoriya & Geografiya Intellekti (Shaharlar, Foizlar, Faol Soatlar)
+    getAudience: async (accountId = null) => {
+        return api.get('/instagram/audience/', { params: { account_id: accountId } });
+    },
+
+    // 4. Tezkor Sinxronizatsiya (Sync Now)
+    syncNow: async (accountId = null) => {
+        return api.post('/instagram/sync/', { account_id: accountId });
+    },
+
+    getSyncStatus: async () => {
+        return api.get('/instagram/sync/');
+    },
+
+    // 5. CRM Lead Integratsiyasi & Konversiya
+    getPostLeads: async () => {
+        return api.get('/instagram/post-leads/');
     },
 
     // Barcha akkauntlar ro'yxati
@@ -36,18 +55,13 @@ export const instagramService = {
         return api.get('/instagram/accounts/');
     },
 
-    // Chatlar ro'yxati
-    getConversations: async (accountId = null) => {
-        return api.get('/instagram/conversations/', { params: { account_id: accountId } });
+    // Legacy Stats / Media (if needed for fallback)
+    getStats: async (period = 'day', accountId = null) => {
+        return api.get('/instagram/stats/', { params: { period, account_id: accountId } });
     },
 
-    // Chat tarixi
-    getMessages: async (threadId, accountId = null) => {
-        return api.get(`/instagram/threads/${threadId}/messages/`, { params: { account_id: accountId } });
-    },
-
-    // Xabar yuborish
-    sendMessage: async (recipientId, text, accountId = null) => {
-        return api.post('/instagram/send-message/', { recipient_id: recipientId, text, account_id: accountId });
+    getMedia: async (limit = 20, accountId = null) => {
+        return api.get('/instagram/media/', { params: { limit, account_id: accountId } });
     },
 };
+
