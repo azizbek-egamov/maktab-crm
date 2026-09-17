@@ -22,8 +22,14 @@ export const instagramService = {
     },
 
     // 1. Dashboard Executive Summary (KPIs, Charts, Heatmap, Format Comparison, AI Advice)
-    getSummary: async (period = '30d', accountId = null) => {
-        return api.get('/instagram/summary/', { params: { period, account_id: accountId } });
+    getSummary: async (params = '30d', accountId = null) => {
+        let queryParams = {};
+        if (typeof params === 'object' && params !== null) {
+            queryParams = params;
+        } else {
+            queryParams = { period: params, account_id: accountId };
+        }
+        return api.get('/instagram/summary/', { params: queryParams });
     },
 
     // 2. Reels & Kontent Studio (Kengaytirilgan Filtrlar, Qidiruv, Pagination)

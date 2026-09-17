@@ -18,7 +18,7 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 16px;
     padding: 20px 24px;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
 }
 
@@ -105,37 +105,6 @@
     gap: 14px;
 }
 
-.ig-period-pills {
-    display: flex;
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-    padding: 4px;
-    gap: 2px;
-}
-
-.ig-period-btn {
-    background: transparent;
-    border: none;
-    color: #94a3b8;
-    padding: 6px 12px;
-    font-size: 12px;
-    font-weight: 500;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.ig-period-btn:hover {
-    color: #ffffff;
-}
-
-.ig-period-btn.active {
-    background: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
-    font-weight: 600;
-}
-
 /* Buttons */
 .ig-btn-primary {
     display: inline-flex;
@@ -194,7 +163,7 @@
 .ig-nav-tabs {
     display: flex;
     gap: 12px;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     padding-bottom: 12px;
     overflow-x: auto;
@@ -233,6 +202,137 @@
     padding: 2px 7px;
     border-radius: 10px;
     color: #e2e8f0;
+}
+
+/* ── Global Date Range Selector Bar ── */
+.ig-global-date-bar {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.55), rgba(15, 23, 42, 0.65));
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.ig-date-presets-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.ig-date-bar-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #94a3b8;
+}
+
+.ig-period-pills {
+    display: flex;
+    flex-wrap: wrap;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 3px;
+    gap: 2px;
+}
+
+.ig-period-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.ig-period-btn:hover {
+    color: #ffffff;
+}
+
+.ig-period-btn.active {
+    background: rgba(225, 48, 108, 0.25);
+    color: #ffffff;
+    font-weight: 600;
+    border: 1px solid rgba(225, 48, 108, 0.4);
+}
+
+.ig-custom-datepicker-wrap {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 6px 12px;
+}
+
+.ig-date-input-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.ig-date-input {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 6px;
+    padding: 5px 8px;
+    color: #ffffff;
+    font-size: 12px;
+    outline: none;
+    color-scheme: dark;
+}
+
+.ig-date-input:focus {
+    border-color: #e1306c;
+}
+
+.ig-btn-apply-date {
+    background: linear-gradient(45deg, #e1306c, #f77737);
+    border: none;
+    color: #ffffff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.ig-btn-apply-date:hover {
+    opacity: 0.9;
+}
+
+.ig-btn-clear-date {
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    color: #94a3b8;
+    padding: 6px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.ig-btn-clear-date:hover {
+    color: #ffffff;
+    background: rgba(239, 68, 68, 0.3);
 }
 
 /* ── KPI Grid ── */
@@ -697,11 +797,11 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 14px;
     padding: 18px 22px;
-    margin-bottom: 20px;
+    margin-bottom: 14px;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 16px;
+    gap: 14px;
 }
 
 .ig-search-box {
@@ -728,6 +828,7 @@
     font-size: 13px;
     outline: none;
     transition: border-color 0.2s;
+    box-sizing: border-box;
 }
 
 .ig-search-input:focus {
@@ -743,6 +844,13 @@
     border: none;
     color: #64748b;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ig-search-clear:hover {
+    color: #fff;
 }
 
 .ig-filter-group {
@@ -770,7 +878,7 @@
     background: transparent;
     border: none;
     color: #94a3b8;
-    padding: 5px 10px;
+    padding: 6px 11px;
     font-size: 12px;
     border-radius: 6px;
     cursor: pointer;
@@ -778,10 +886,15 @@
     white-space: nowrap;
 }
 
+.ig-pill-btn:hover {
+    color: #ffffff;
+}
+
 .ig-pill-btn.active {
     background: rgba(225, 48, 108, 0.2);
     color: #f43f5e;
     font-weight: 600;
+    border: 1px solid rgba(225, 48, 108, 0.35);
 }
 
 .ig-sort-wrap {
@@ -791,14 +904,119 @@
 }
 
 .ig-select {
-    background: rgba(15, 23, 42, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     color: #e2e8f0;
-    padding: 7px 12px;
+    padding: 8px 12px;
     font-size: 12px;
     border-radius: 8px;
     outline: none;
     cursor: pointer;
+}
+
+.ig-select:focus {
+    border-color: #e1306c;
+}
+
+.ig-btn-export {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #34d399;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-left: auto;
+}
+
+.ig-btn-export:hover {
+    background: rgba(16, 185, 129, 0.25);
+    transform: translateY(-1px);
+}
+
+/* ── Active Filters Tag Bar ── */
+.ig-active-filters-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: rgba(15, 23, 42, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 10px;
+    padding: 8px 16px;
+    margin-bottom: 14px;
+    animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.ig-active-label {
+    font-size: 12px;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.ig-active-tags-list {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex: 1;
+}
+
+.ig-tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(225, 48, 108, 0.15);
+    border: 1px solid rgba(225, 48, 108, 0.3);
+    color: #f43f5e;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.ig-tag-chip button {
+    background: transparent;
+    border: none;
+    color: #f43f5e;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ig-tag-chip button:hover {
+    color: #ffffff;
+}
+
+.ig-btn-reset-filters {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: transparent;
+    border: 1px dashed rgba(239, 68, 68, 0.4);
+    color: #f87171;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ig-btn-reset-filters:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: #f87171;
 }
 
 /* Studio Summary Bar */
@@ -997,6 +1215,12 @@
     font-size: 12px;
     border-radius: 8px;
     cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ig-page-btn:hover:not(:disabled) {
+    background: rgba(51, 65, 85, 0.8);
+    color: #fff;
 }
 
 .ig-page-btn:disabled {
@@ -1164,7 +1388,7 @@
     background: #0f172a;
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 20px;
-    max-width: 900px;
+    max-width: 920px;
     width: 100%;
     max-height: 88vh;
     position: relative;
@@ -1313,9 +1537,9 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
     padding: 14px;
-    max-height: 130px;
+    max-height: 120px;
     overflow-y: auto;
-    margin-bottom: 18px;
+    margin-bottom: 16px;
 }
 
 .ig-modal-caption-text {
@@ -1331,7 +1555,7 @@
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
 }
 
 .ig-modal-metric-card {
@@ -1339,6 +1563,10 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
     padding: 10px 14px;
+}
+
+.col-span-2 {
+    grid-column: span 2;
 }
 
 .ig-m-label {
@@ -1352,6 +1580,34 @@
 .ig-m-val {
     font-size: 16px;
     font-weight: 700;
+    color: #ffffff;
+}
+
+.ig-modal-actions-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.ig-modal-btn-action {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #cbd5e1;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ig-modal-btn-action:hover {
+    background: rgba(255, 255, 255, 0.12);
     color: #ffffff;
 }
 

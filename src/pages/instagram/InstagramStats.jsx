@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
     Users, Eye, TrendingUp, Heart, MessageCircle, Bookmark,
@@ -6,7 +6,8 @@ import {
     ArrowUpRight, ArrowDownRight, Minus, Share2, Clock, Calendar,
     Zap, Target, Activity, Award, Send, ChevronLeft, ChevronRight,
     Search, Filter, Play, CheckCircle2, Sparkles, MapPin, UserCheck,
-    Layers, AlertCircle, X, HelpCircle
+    Layers, AlertCircle, X, HelpCircle, Download, Copy, Check, SlidersHorizontal,
+    RotateCcw
 } from 'lucide-react';
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -15,15 +16,46 @@ import { instagramService } from '../../services/instagram';
 import { toast } from 'sonner';
 import './InstagramStats.css';
 
+const DATE_PRESETS = [
+    { key: 'all', label: 'Barchasi' },
+    { key: 'today', label: 'Bugun' },
+    { key: 'yesterday', label: 'Kecha' },
+    { key: '7d', label: '7 kun' },
+    { key: '30d', label: '30 kun' },
+    { key: '90d', label: '90 kun' },
+    { key: 'this_month', label: 'Shu oy' },
+    { key: 'last_month', label: "O'tgan oy" },
+    { key: 'this_year', label: 'Shu yil' },
+    { key: 'custom', label: 'Maxsus sana 📅' }
+];
+
+const SORT_OPTIONS = [
+    { value: 'newest', label: '📅 Eng yangi birinchi' },
+    { value: 'oldest', label: '📅 Eng eski birinchi' },
+    { value: 'views', label: "👁️ Ko'rishlar (kamayish)" },
+    { value: 'reach', label: '👥 Qamrov / Reach (kamayish)' },
+    { value: 'likes', label: '❤️ Like-lar (kamayish)' },
+    { value: 'comments', label: '💬 Izohlar (kamayish)' },
+    { value: 'saved', label: '🔖 Saqlanganlar (kamayish)' },
+    { value: 'shares', label: '↗️ Ulashishlar (kamayish)' },
+    { value: 'engagement_rate', label: '📈 Faollik (ER %)' },
+];
+
 const InstagramStats = () => {
-    // Navigation & Global state
+    // Navigation & Tabs
     const [activeTab, setActiveTab] = useState('overview'); // overview, reels_studio, audience, leads
-    const [period, setPeriod] = useState('30d'); // 7d, 30d, 90d, all
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
     const [accounts, setAccounts] = useState([]);
     const [selectedAccountId, setSelectedAccountId] = useState(null);
     const [profile, setProfile] = useState(null);
+
+    // Global Date Range State
+    const [datePreset, setDatePreset] = useState('30d');
+    const [customDateFrom, setCustomDateFrom] = useState('');
+    const [customDateTo, setCustomDateTo] = useState('');
+    const [appliedDateFrom, setAppliedDateFrom] = useState('');
+    const [appliedDateTo, setAppliedDateTo] = useState('');
 
     // Tab 1: Executive Overview Data
     const [summary, setSummary] = useState(null);
@@ -35,11 +67,14 @@ const InstagramStats = () => {
         page: 1,
         page_size: 12,
         total_pages: 1,
+        format_counts: { ALL: 0, VIDEO: 0, IMAGE: 0, CAROUSEL_ALBUM: 0 },
+        badge_counts: { ALL: 0, viral: 0, high: 0, normal: 0 },
         stats: {}
     });
     const [filterMediaType, setFilterMediaType] = useState('ALL');
     const [filterBadge, setFilterBadge] = useState('ALL');
     const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [sortBy, setSortBy] = useState('newest');
     const [reelsPage, setReelsPage] = useState(1);
     const [reelsLoading, setReelsLoading] = useState(false);
@@ -53,9 +88,23 @@ const InstagramStats = () => {
     // Modal state
     const [selectedPost, setSelectedPost] = useState(null);
     const [videoError, setVideoError] = useState(false);
+    const [copiedCaption, setCopiedCaption] = useState(false);
+    const [copiedLink, setCopiedLink] = useState(false);
 
+    // Debounce search query (300ms)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+            setReelsPage(1);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Modal state reset on selection change
     useEffect(() => {
         setVideoError(false);
+        setCopiedCaption(false);
+        setCopiedLink(false);
     }, [selectedPost]);
 
     // Modal body lock & Escape key listener
@@ -79,12 +128,12 @@ const InstagramStats = () => {
         };
     }, [selectedPost]);
 
-    // Initial load
+    // Initial load accounts
     useEffect(() => {
         loadAccounts();
     }, []);
 
-    // Load tab-specific data when account, period, or activeTab changes
+    // Load tab-specific data
     useEffect(() => {
         if (selectedAccountId) {
             if (activeTab === 'overview') {
@@ -97,14 +146,14 @@ const InstagramStats = () => {
                 loadLeadsData();
             }
         }
-    }, [selectedAccountId, period, activeTab]);
+    }, [selectedAccountId, activeTab, datePreset, appliedDateFrom, appliedDateTo]);
 
-    // Reload Reels studio when filters change
+    // Reload Reels Studio when filter options change
     useEffect(() => {
         if (activeTab === 'reels_studio' && selectedAccountId) {
             loadReelsStudioData();
         }
-    }, [filterMediaType, filterBadge, sortBy, reelsPage]);
+    }, [filterMediaType, filterBadge, debouncedSearch, sortBy, reelsPage]);
 
     const loadAccounts = async () => {
         try {
@@ -126,10 +175,22 @@ const InstagramStats = () => {
         }
     };
 
+    const getFilterDateParams = () => {
+        const params = { account_id: selectedAccountId };
+        if (datePreset === 'custom') {
+            if (appliedDateFrom) params.date_from = appliedDateFrom;
+            if (appliedDateTo) params.date_to = appliedDateTo;
+        } else {
+            params.period = datePreset;
+        }
+        return params;
+    };
+
     const loadSummaryData = async () => {
         try {
             setLoading(true);
-            const res = await instagramService.getSummary(period, selectedAccountId);
+            const params = getFilterDateParams();
+            const res = await instagramService.getSummary(params);
             if (res.data && res.data.connected) {
                 setSummary(res.data);
             }
@@ -143,11 +204,12 @@ const InstagramStats = () => {
     const loadReelsStudioData = async () => {
         try {
             setReelsLoading(true);
+            const dateParams = getFilterDateParams();
             const res = await instagramService.getReelsStudio({
-                account_id: selectedAccountId,
+                ...dateParams,
                 media_type: filterMediaType,
                 badge: filterBadge,
-                search: searchQuery,
+                search: debouncedSearch,
                 sort_by: sortBy,
                 page: reelsPage,
                 page_size: 12
@@ -225,10 +287,91 @@ const InstagramStats = () => {
         }
     };
 
-    const handleSearchSubmit = (e) => {
-        e.preventDefault();
+    const handleApplyCustomDates = () => {
+        if (!customDateFrom && !customDateTo) {
+            toast.warning("Iltimos, kamida bitta sana kiriting");
+            return;
+        }
+        if (customDateFrom && customDateTo && customDateFrom > customDateTo) {
+            toast.error("Boshlang'ich sana tugash sanasidan katta bo'lishi mumkin emas");
+            return;
+        }
+        setAppliedDateFrom(customDateFrom);
+        setAppliedDateTo(customDateTo);
         setReelsPage(1);
-        loadReelsStudioData();
+        toast.success("Sana filtri qo'llandi");
+    };
+
+    const handleClearCustomDates = () => {
+        setCustomDateFrom('');
+        setCustomDateTo('');
+        setAppliedDateFrom('');
+        setAppliedDateTo('');
+        setDatePreset('30d');
+        setReelsPage(1);
+    };
+
+    const handleResetAllFilters = () => {
+        setFilterMediaType('ALL');
+        setFilterBadge('ALL');
+        setSearchQuery('');
+        setDebouncedSearch('');
+        setSortBy('newest');
+        setDatePreset('30d');
+        setCustomDateFrom('');
+        setCustomDateTo('');
+        setAppliedDateFrom('');
+        setAppliedDateTo('');
+        setReelsPage(1);
+        toast.info("Barcha filtrlar tozalandi");
+    };
+
+    const hasActiveFilters = useMemo(() => {
+        return (
+            filterMediaType !== 'ALL' ||
+            filterBadge !== 'ALL' ||
+            debouncedSearch !== '' ||
+            sortBy !== 'newest' ||
+            datePreset !== '30d' ||
+            appliedDateFrom !== '' ||
+            appliedDateTo !== ''
+        );
+    }, [filterMediaType, filterBadge, debouncedSearch, sortBy, datePreset, appliedDateFrom, appliedDateTo]);
+
+    // Export current filtered results to CSV
+    const handleExportCSV = () => {
+        if (!reelsData.results || reelsData.results.length === 0) {
+            toast.error("Eksport qilish uchun postlar mavjud emas");
+            return;
+        }
+
+        const headers = ['ID', 'Turi', 'Sana', 'Layklar', 'Izohlar', 'Qamrov', "Ko'rishlar", 'Saqlanganlar', 'Ulashishlar', 'ER (%)', 'Belgi', 'Havola', 'Tavsif'];
+        const rows = reelsData.results.map(post => [
+            post.id,
+            post.media_type,
+            new Date(post.timestamp).toISOString(),
+            post.like_count,
+            post.comments_count,
+            post.reach,
+            post.impressions,
+            post.saved,
+            post.shares,
+            post.engagement_rate,
+            post.performance_badge,
+            post.permalink || '',
+            `"${(post.caption || '').replace(/"/g, '""')}"`
+        ]);
+
+        const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `instagram_posts_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Eksport qilindi: CSV fayl yuklab olindi");
     };
 
     // Format numbers
@@ -239,7 +382,25 @@ const InstagramStats = () => {
         return num.toLocaleString();
     };
 
-    // Performance badge render
+    // Copy caption helper
+    const handleCopyCaption = (text) => {
+        if (!text) return;
+        navigator.clipboard.writeText(text);
+        setCopiedCaption(true);
+        toast.success("Tavsifdan nusxa olindi!");
+        setTimeout(() => setCopiedCaption(false), 2000);
+    };
+
+    // Copy link helper
+    const handleCopyLink = (link) => {
+        if (!link) return;
+        navigator.clipboard.writeText(link);
+        setCopiedLink(true);
+        toast.success("Instagram havolasi nusxalandi!");
+        setTimeout(() => setCopiedLink(false), 2000);
+    };
+
+    // Performance badge renderer
     const renderBadge = (badge) => {
         if (badge === 'viral') {
             return <span className="ig-badge ig-badge-viral"><Sparkles size={12} /> Virusli</span>;
@@ -308,25 +469,6 @@ const InstagramStats = () => {
                 </div>
 
                 <div className="ig-header-actions">
-                    {activeTab === 'overview' && (
-                        <div className="ig-period-pills">
-                            {[
-                                { key: '7d', label: '7 kun' },
-                                { key: '30d', label: '30 kun' },
-                                { key: '90d', label: '3 oy' },
-                                { key: 'all', label: 'Barchasi' }
-                            ].map(item => (
-                                <button
-                                    key={item.key}
-                                    className={`ig-period-btn ${period === item.key ? 'active' : ''}`}
-                                    onClick={() => setPeriod(item.key)}
-                                >
-                                    {item.label}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-
                     <button
                         onClick={handleSyncNow}
                         disabled={syncing}
@@ -372,7 +514,69 @@ const InstagramStats = () => {
                 </button>
             </nav>
 
-            {/* ── 3. Tab Contents ── */}
+            {/* ── 3. Global Date Range Selector Bar (Overview & Reels Tabs) ── */}
+            {(activeTab === 'overview' || activeTab === 'reels_studio') && (
+                <div className="ig-global-date-bar">
+                    <div className="ig-date-presets-row">
+                        <span className="ig-date-bar-label">
+                            <Calendar size={15} />
+                            <span>Davr:</span>
+                        </span>
+                        <div className="ig-period-pills">
+                            {DATE_PRESETS.map(item => (
+                                <button
+                                    key={item.key}
+                                    className={`ig-period-btn ${datePreset === item.key ? 'active' : ''}`}
+                                    onClick={() => {
+                                        setDatePreset(item.key);
+                                        if (item.key !== 'custom') {
+                                            setAppliedDateFrom('');
+                                            setAppliedDateTo('');
+                                        }
+                                        setReelsPage(1);
+                                    }}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Custom Date Range Picker Inputs */}
+                    {datePreset === 'custom' && (
+                        <div className="ig-custom-datepicker-wrap">
+                            <div className="ig-date-input-group">
+                                <label>Dan:</label>
+                                <input
+                                    type="date"
+                                    value={customDateFrom}
+                                    onChange={(e) => setCustomDateFrom(e.target.value)}
+                                    className="ig-date-input"
+                                />
+                            </div>
+                            <div className="ig-date-input-group">
+                                <label>Gacha:</label>
+                                <input
+                                    type="date"
+                                    value={customDateTo}
+                                    onChange={(e) => setCustomDateTo(e.target.value)}
+                                    className="ig-date-input"
+                                />
+                            </div>
+                            <button onClick={handleApplyCustomDates} className="ig-btn-apply-date">
+                                Qo'llash
+                            </button>
+                            {(appliedDateFrom || appliedDateTo) && (
+                                <button onClick={handleClearCustomDates} className="ig-btn-clear-date" title="Tozalash">
+                                    <X size={15} />
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── 4. Tab Contents ── */}
             <main className="ig-tab-content">
                 {/* ══════════════ TAB 1: EXECUTIVE OVERVIEW ══════════════ */}
                 {activeTab === 'overview' && summary && (
@@ -389,9 +593,9 @@ const InstagramStats = () => {
                                 <div className="ig-kpi-value">{formatNum(summary.kpis?.followers || 816)}</div>
                                 <div className="ig-kpi-footer">
                                     <span className="ig-trend-badge positive">
-                                        <ArrowUpRight size={14} /> +{summary.kpis?.period_posts || 10} yangi post
+                                        <ArrowUpRight size={14} /> +{summary.kpis?.period_posts || 10} ta post
                                     </span>
-                                    <span className="ig-kpi-hint">faol auditoriya</span>
+                                    <span className="ig-kpi-hint">tanlangan davrda</span>
                                 </div>
                             </div>
 
@@ -407,7 +611,9 @@ const InstagramStats = () => {
                                     <span className="ig-trend-badge neutral">
                                         <Activity size={14} /> Noyob ko'rishlar
                                     </span>
-                                    <span className="ig-kpi-hint">{period === '7d' ? '7 kunda' : '30 kunda'}</span>
+                                    <span className="ig-kpi-hint">
+                                        {summary.date_from && summary.date_to ? `${summary.date_from} ~ ${summary.date_to}` : datePreset}
+                                    </span>
                                 </div>
                             </div>
 
@@ -423,6 +629,7 @@ const InstagramStats = () => {
                                     <span className="ig-pill-detail">❤️ {summary.kpis?.likes || 0}</span>
                                     <span className="ig-pill-detail">💬 {summary.kpis?.comments || 0}</span>
                                     <span className="ig-pill-detail">🔖 {summary.kpis?.saved || 0}</span>
+                                    <span className="ig-pill-detail">↗️ {summary.kpis?.shares || 0}</span>
                                 </div>
                             </div>
 
@@ -436,7 +643,7 @@ const InstagramStats = () => {
                                 <div className="ig-kpi-value">{summary.kpis?.avg_engagement_rate || 2.83}%</div>
                                 <div className="ig-kpi-footer">
                                     <span className="ig-trend-badge positive">
-                                        <CheckCircle2 size={14} /> Yaxshi ko'rsatkich
+                                        <CheckCircle2 size={14} /> Yuqori faollik
                                     </span>
                                     <span className="ig-kpi-hint">soha normasi 2-3%</span>
                                 </div>
@@ -449,7 +656,7 @@ const InstagramStats = () => {
                                 <div className="ig-card-header">
                                     <div>
                                         <h3 className="ig-card-title">Qamrov va Faollik Dinamikasi</h3>
-                                        <p className="ig-card-desc">Oxirgi kunlar kesimida postlar va qamrov o'zgarishi</p>
+                                        <p className="ig-card-desc">Tanlangan oraliqda postlar, qamrov va foydalanuvchilar faolligi</p>
                                     </div>
                                 </div>
                                 <div className="ig-chart-container">
@@ -645,8 +852,8 @@ const InstagramStats = () => {
                                         </div>
                                         <div className="ig-mini-post-info">
                                             <div className="ig-mini-metrics">
-                                                <span>❤️ {post.like_count}</span>
-                                                <span>💬 {post.comments_count}</span>
+                                                <span>❤️ {formatNum(post.like_count)}</span>
+                                                <span>💬 {formatNum(post.comments_count)}</span>
                                                 <span>⚡ {post.engagement_rate}%</span>
                                             </div>
                                             <p className="ig-mini-caption">{post.caption || "Izohsiz post"}</p>
@@ -661,32 +868,39 @@ const InstagramStats = () => {
                 {/* ══════════════ TAB 2: REELS & CONTENT STUDIO ══════════════ */}
                 {activeTab === 'reels_studio' && (
                     <div className="ig-studio-section">
-                        {/* Filters Bar */}
+                        {/* Filters Control Center */}
                         <div className="ig-filters-card">
-                            <form onSubmit={handleSearchSubmit} className="ig-search-box">
+                            {/* Search bar */}
+                            <div className="ig-search-box">
                                 <Search size={18} className="ig-search-icon" />
                                 <input
                                     type="text"
-                                    placeholder="Post tavsifi yoki sarlavhasidan qidirish..."
+                                    placeholder="Post tavsifi yoki kalit so'zdan qidirish (avto-filtr)..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="ig-search-input"
                                 />
                                 {searchQuery && (
-                                    <button type="button" onClick={() => { setSearchQuery(''); setReelsPage(1); }} className="ig-search-clear">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setSearchQuery(''); setReelsPage(1); }}
+                                        className="ig-search-clear"
+                                        title="Qidiruvni tozalash"
+                                    >
                                         <X size={16} />
                                     </button>
                                 )}
-                            </form>
+                            </div>
 
+                            {/* Format Filter with Live Dynamic Counts */}
                             <div className="ig-filter-group">
                                 <span className="ig-filter-label">Format:</span>
                                 <div className="ig-filter-pills">
                                     {[
-                                        { key: 'ALL', label: 'Barchasi' },
-                                        { key: 'VIDEO', label: '🎬 Reels' },
-                                        { key: 'IMAGE', label: '🖼️ Rasmlar' },
-                                        { key: 'CAROUSEL_ALBUM', label: '📑 Karusellar' }
+                                        { key: 'ALL', label: `Hammasi (${reelsData.format_counts?.ALL ?? reelsData.count})` },
+                                        { key: 'VIDEO', label: `🎬 Reels (${reelsData.format_counts?.VIDEO ?? 0})` },
+                                        { key: 'IMAGE', label: `📸 Rasm (${reelsData.format_counts?.IMAGE ?? 0})` },
+                                        { key: 'CAROUSEL_ALBUM', label: `🎠 Karusel (${reelsData.format_counts?.CAROUSEL_ALBUM ?? 0})` }
                                     ].map(item => (
                                         <button
                                             key={item.key}
@@ -699,14 +913,15 @@ const InstagramStats = () => {
                                 </div>
                             </div>
 
+                            {/* Badge Filter with Live Dynamic Counts */}
                             <div className="ig-filter-group">
                                 <span className="ig-filter-label">Samaradorlik:</span>
                                 <div className="ig-filter-pills">
                                     {[
-                                        { key: 'ALL', label: 'Barchasi' },
-                                        { key: 'viral', label: '🔥 Virusli' },
-                                        { key: 'high', label: '⭐ Yuqori' },
-                                        { key: 'normal', label: '📊 Standart' }
+                                        { key: 'ALL', label: `Barchasi (${reelsData.badge_counts?.ALL ?? reelsData.count})` },
+                                        { key: 'viral', label: `🔥 Virusli (${reelsData.badge_counts?.viral ?? 0})` },
+                                        { key: 'high', label: `⭐ Yuqori (${reelsData.badge_counts?.high ?? 0})` },
+                                        { key: 'normal', label: `📊 Standart (${reelsData.badge_counts?.normal ?? 0})` }
                                     ].map(item => (
                                         <button
                                             key={item.key}
@@ -719,6 +934,7 @@ const InstagramStats = () => {
                                 </div>
                             </div>
 
+                            {/* Sort Selector */}
                             <div className="ig-sort-wrap">
                                 <span className="ig-filter-label">Saralash:</span>
                                 <select
@@ -726,21 +942,74 @@ const InstagramStats = () => {
                                     onChange={(e) => { setSortBy(e.target.value); setReelsPage(1); }}
                                     className="ig-select"
                                 >
-                                    <option value="newest">📅 Eng yangi</option>
-                                    <option value="oldest">📅 Eng eski</option>
-                                    <option value="likes">❤️ Eng ko'p layk</option>
-                                    <option value="comments">💬 Eng ko'p izoh</option>
-                                    <option value="engagement_rate">📈 Yuqori faollik foizi</option>
-                                    <option value="views">👁️ Ko'rishlar bo'yicha</option>
+                                    {SORT_OPTIONS.map(opt => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
                                 </select>
                             </div>
+
+                            {/* CSV Export Button */}
+                            <button
+                                onClick={handleExportCSV}
+                                className="ig-btn-export"
+                                title="Hozirgi filtrlangan postlarni Excel/CSV formatida yuklab olish"
+                            >
+                                <Download size={15} />
+                                <span>CSV Eksport</span>
+                            </button>
                         </div>
 
-                        {/* Summary Bar */}
+                        {/* Active Filters Tag Bar (Displays when filters are active) */}
+                        {hasActiveFilters && (
+                            <div className="ig-active-filters-bar">
+                                <span className="ig-active-label">Faol filtrlar:</span>
+                                <div className="ig-active-tags-list">
+                                    {filterMediaType !== 'ALL' && (
+                                        <span className="ig-tag-chip">
+                                            Format: {filterMediaType === 'VIDEO' ? 'Reels' : filterMediaType === 'IMAGE' ? 'Rasm' : 'Karusel'}
+                                            <button onClick={() => { setFilterMediaType('ALL'); setReelsPage(1); }}><X size={12} /></button>
+                                        </span>
+                                    )}
+                                    {filterBadge !== 'ALL' && (
+                                        <span className="ig-tag-chip">
+                                            Belgi: {filterBadge === 'viral' ? '🔥 Virusli' : filterBadge === 'high' ? '⭐ Yuqori' : 'Standart'}
+                                            <button onClick={() => { setFilterBadge('ALL'); setReelsPage(1); }}><X size={12} /></button>
+                                        </span>
+                                    )}
+                                    {debouncedSearch && (
+                                        <span className="ig-tag-chip">
+                                            Qidiruv: "{debouncedSearch}"
+                                            <button onClick={() => { setSearchQuery(''); setReelsPage(1); }}><X size={12} /></button>
+                                        </span>
+                                    )}
+                                    {datePreset !== '30d' && (
+                                        <span className="ig-tag-chip">
+                                            Davr: {datePreset === 'custom' ? `${appliedDateFrom || '...'} ~ ${appliedDateTo || '...'}` : datePreset}
+                                            <button onClick={() => { setDatePreset('30d'); setAppliedDateFrom(''); setAppliedDateTo(''); setReelsPage(1); }}><X size={12} /></button>
+                                        </span>
+                                    )}
+                                    {sortBy !== 'newest' && (
+                                        <span className="ig-tag-chip">
+                                            Saralash: {SORT_OPTIONS.find(s => s.value === sortBy)?.label.split(' ')[1] || sortBy}
+                                            <button onClick={() => { setSortBy('newest'); setReelsPage(1); }}><X size={12} /></button>
+                                        </span>
+                                    )}
+                                </div>
+                                <button onClick={handleResetAllFilters} className="ig-btn-reset-filters">
+                                    <RotateCcw size={13} />
+                                    <span>Filtrlarni tozalash</span>
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Aggregated Studio Summary Bar */}
                         <div className="ig-studio-summary-bar">
                             <span>Topildi: <strong>{reelsData.count} ta kontent</strong></span>
+                            <span>Jami qamrov: <strong>{formatNum(reelsData.stats?.total_reach)}</strong></span>
                             <span>Jami layklar: <strong>{formatNum(reelsData.stats?.total_likes)}</strong></span>
                             <span>Jami izohlar: <strong>{formatNum(reelsData.stats?.total_comments)}</strong></span>
+                            <span>Saqlanganlar: <strong>{formatNum(reelsData.stats?.total_saved)}</strong></span>
+                            <span>Ulashishlar: <strong>{formatNum(reelsData.stats?.total_shares)}</strong></span>
                             <span>O'rtacha faollik: <strong>{reelsData.stats?.avg_engagement_rate}%</strong></span>
                         </div>
 
@@ -748,13 +1017,16 @@ const InstagramStats = () => {
                         {reelsLoading ? (
                             <div className="ig-studio-loading">
                                 <div className="ig-spinner"></div>
-                                <p>Kontentlar saralanmoqda...</p>
+                                <p>Kontentlar saralanmoqda va filtrlari hisoblanmoqda...</p>
                             </div>
                         ) : reelsData.results.length === 0 ? (
                             <div className="ig-empty-state">
-                                <AlertCircle size={40} className="text-gray-400" />
-                                <h3>Hech qanday kontent topilmadi</h3>
-                                <p>Filtrlarni o'zgartirib yoki qidiruv so'zini tozalab ko'ring.</p>
+                                <AlertCircle size={44} className="text-gray-400" />
+                                <h3>Tanlangan parametrlar bo'yicha kontent topilmadi</h3>
+                                <p>Filtrlarni o'zgartirib yoki tozalab ko'ring.</p>
+                                <button onClick={handleResetAllFilters} className="ig-btn-secondary mt-3">
+                                    <RotateCcw size={15} /> Filtrlarni qayta o'rnatish
+                                </button>
                             </div>
                         ) : (
                             <div className="ig-media-grid">
@@ -774,15 +1046,16 @@ const InstagramStats = () => {
                                             />
                                             {item.media_type === 'VIDEO' && (
                                                 <div className="ig-card-play-icon">
-                                                    <Play size={24} fill="#fff" />
+                                                    <Play size={26} fill="#fff" />
                                                 </div>
                                             )}
                                             <div className="ig-card-badge-top">
                                                 {renderBadge(item.performance_badge)}
                                             </div>
                                             <div className="ig-card-hover-stats">
-                                                <span>❤️ {item.like_count}</span>
-                                                <span>💬 {item.comments_count}</span>
+                                                <span>❤️ {formatNum(item.like_count)}</span>
+                                                <span>💬 {formatNum(item.comments_count)}</span>
+                                                <span>👥 {formatNum(item.reach)}</span>
                                                 <span>⚡ {item.engagement_rate}%</span>
                                             </div>
                                         </div>
@@ -793,11 +1066,11 @@ const InstagramStats = () => {
                                                     {new Date(item.timestamp).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'short', year: 'numeric' })}
                                                 </span>
                                                 <span className="ig-card-type-tag">
-                                                    {item.media_type === 'VIDEO' ? 'Reels' : item.media_type === 'IMAGE' ? 'Rasm' : 'Karusel'}
+                                                    {item.media_type === 'VIDEO' ? '🎬 Reels' : item.media_type === 'IMAGE' ? '📸 Rasm' : '🎠 Karusel'}
                                                 </span>
                                             </div>
                                             <p className="ig-card-caption">
-                                                {item.caption ? (item.caption.length > 80 ? item.caption.slice(0, 80) + '...' : item.caption) : "Izoh mavjud emas"}
+                                                {item.caption ? (item.caption.length > 90 ? item.caption.slice(0, 90) + '...' : item.caption) : "Izoh mavjud emas"}
                                             </p>
                                             <div className="ig-card-actions">
                                                 <button className="ig-card-btn-view" onClick={() => setSelectedPost(item)}>
@@ -832,7 +1105,7 @@ const InstagramStats = () => {
                                     <ChevronLeft size={16} /> Oldingi
                                 </button>
                                 <span className="ig-page-indicator">
-                                    Sahifa {reelsData.page} / {reelsData.total_pages}
+                                    Sahifa <strong>{reelsData.page}</strong> / {reelsData.total_pages} (Jami {reelsData.count} ta)
                                 </span>
                                 <button
                                     disabled={reelsPage >= reelsData.total_pages}
@@ -1034,7 +1307,7 @@ const InstagramStats = () => {
                 )}
             </main>
 
-            {/* ── 4. Detailed Post Modal (Mounted to document.body via Portal) ── */}
+            {/* ── 5. Detailed Post Modal (Mounted to document.body via Portal) ── */}
             {selectedPost && createPortal(
                 <div className="ig-modal-backdrop" onClick={() => setSelectedPost(null)}>
                     <div className="ig-modal-box" onClick={(e) => e.stopPropagation()}>
@@ -1097,7 +1370,7 @@ const InstagramStats = () => {
                                     <div className="ig-modal-badge-row">
                                         {renderBadge(selectedPost.performance_badge)}
                                         <span className="ig-modal-type">
-                                            {selectedPost.media_type === 'VIDEO' ? 'Reels' : selectedPost.media_type === 'IMAGE' ? 'Rasm' : 'Karusel'}
+                                            {selectedPost.media_type === 'VIDEO' ? '🎬 Reels' : selectedPost.media_type === 'IMAGE' ? '📸 Rasm' : '🎠 Karusel'}
                                         </span>
                                     </div>
                                     <span className="ig-modal-date">
@@ -1125,8 +1398,8 @@ const InstagramStats = () => {
                                         <span className="ig-m-val">👥 {formatNum(selectedPost.reach)}</span>
                                     </div>
                                     <div className="ig-modal-metric-card">
-                                        <span className="ig-m-label">Faollik (ER)</span>
-                                        <span className="ig-m-val">⚡ {selectedPost.engagement_rate}%</span>
+                                        <span className="ig-m-label">Ko'rishlar</span>
+                                        <span className="ig-m-val">👁️ {formatNum(selectedPost.impressions || (selectedPost.reach ? selectedPost.reach * 1.3 : 0))}</span>
                                     </div>
                                     <div className="ig-modal-metric-card">
                                         <span className="ig-m-label">Saqlanganlar</span>
@@ -1136,6 +1409,33 @@ const InstagramStats = () => {
                                         <span className="ig-m-label">Ulashishlar</span>
                                         <span className="ig-m-val">↗️ {formatNum(selectedPost.shares)}</span>
                                     </div>
+                                    <div className="ig-modal-metric-card col-span-2">
+                                        <span className="ig-m-label">Faollik Darajasi (ER)</span>
+                                        <span className="ig-m-val text-teal-400">⚡ {selectedPost.engagement_rate}%</span>
+                                    </div>
+                                </div>
+
+                                <div className="ig-modal-actions-row">
+                                    {selectedPost.caption && (
+                                        <button
+                                            onClick={() => handleCopyCaption(selectedPost.caption)}
+                                            className="ig-modal-btn-action"
+                                            title="Tavsifdan nusxa olish"
+                                        >
+                                            {copiedCaption ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
+                                            <span>{copiedCaption ? 'Nusxalandi!' : 'Tavsifni nusxalash'}</span>
+                                        </button>
+                                    )}
+                                    {selectedPost.permalink && (
+                                        <button
+                                            onClick={() => handleCopyLink(selectedPost.permalink)}
+                                            className="ig-modal-btn-action"
+                                            title="Instagram havolasini nusxalash"
+                                        >
+                                            {copiedLink ? <Check size={16} className="text-green-400" /> : <Link2 size={16} />}
+                                            <span>{copiedLink ? 'Havola nusxalandi!' : 'Havolani nusxalash'}</span>
+                                        </button>
+                                    )}
                                 </div>
 
                                 <div className="ig-modal-footer">
