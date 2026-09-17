@@ -3,11 +3,23 @@ import { leadService } from '../../services/leads';
 import { toast } from 'sonner';
 import { formatPhoneInput, parsePhoneToApi } from '../../utils/phoneFormatter';
 
+const HEARD_SOURCES = [
+    { value: 'Instagramda', label: '📸 Instagram' },
+    { value: 'Telegramda', label: '✈️ Telegram' },
+    { value: 'Facebookda', label: '📘 Facebook' },
+    { value: 'Influencer', label: '⭐ Influencer' },
+    { value: 'Referral', label: '👥 Referral' },
+    { value: 'YouTubeda', label: '▶️ YouTube' },
+    { value: 'Odamlar orasida', label: '🗣️ Odamlar orasida' },
+    { value: 'Xech qayerda', label: '❓ Boshqa' },
+];
+
 const QuickLeadForm = ({ stageId, onCancel, onSuccess }) => {
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
         client_name: '',
         phone_number: '',
+        heard_source: 'Instagramda',
         notes: ''
     });
 
@@ -35,13 +47,14 @@ const QuickLeadForm = ({ stageId, onCancel, onSuccess }) => {
             data.append('client_name', formData.client_name);
             data.append('phone_number', rawPhone);
             data.append('stage', stageId);
+            data.append('heard_source', formData.heard_source || 'Instagramda');
 
             if (formData.notes) data.append('notes', formData.notes);
 
             await leadService.create(data);
             toast.success("Lead qo'shildi");
             onSuccess();
-            setFormData({ client_name: '', phone_number: '', notes: '' });
+            setFormData({ client_name: '', phone_number: '', heard_source: 'Instagramda', notes: '' });
         } catch (error) {
             console.error(error);
             toast.error("Xatolik yuz berdi");
@@ -74,6 +87,19 @@ const QuickLeadForm = ({ stageId, onCancel, onSuccess }) => {
                         onChange={handlePhoneChange}
                         placeholder="+998"
                     />
+                </div>
+
+                <div className="form-group-sm">
+                    <label>Manba (Marketing)</label>
+                    <select
+                        name="heard_source"
+                        value={formData.heard_source}
+                        onChange={handleChange}
+                    >
+                        {HEARD_SOURCES.map(s => (
+                            <option key={s.value} value={s.value}>{s.label}</option>
+                        ))}
+                    </select>
                 </div>
 
                 <div className="form-group-sm">

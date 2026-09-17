@@ -3,6 +3,9 @@ import { useOutletContext } from 'react-router-dom';
 import { leadService } from '../../services/leads';
 import { toast } from 'sonner';
 import ConvertLeadModal from './ConvertLeadModal';
+import EnrollStudentModal from './EnrollStudentModal';
+import Modal from '../../components/ui/Modal';
+import { formatDateInput, isValidDateStr, parseUIDateToApi } from '../../utils/dateFormatter';
 import {
     SearchIcon,
     EditIcon,
@@ -13,22 +16,15 @@ import {
     PlusIcon
 } from '../clients/ClientIcons';
 
-// Reuse icons
-const FilterIcon = () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-    </svg>
-);
-
-const SettingsIcon = () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <circle cx="12" cy="12" r="3"></circle>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+const RefreshIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
     </svg>
 );
 
 const ConvertIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M16 3h5v5"></path>
         <path d="M8 21H3v-5"></path>
         <path d="M21 3l-7 7"></path>
@@ -36,30 +32,89 @@ const ConvertIcon = () => (
     </svg>
 );
 
+const AcademicCapIcon = () => (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+        <path d="M6 12v5c3 3 9 3 12 0v-5" />
+    </svg>
+);
+
+const SourceBadge = ({ source }) => {
+    if (!source || source === 'Xech qayerda') {
+        return (
+            <span style={{
+                fontSize: '11px',
+                padding: '3px 8px',
+                borderRadius: '6px',
+                background: 'rgba(100, 116, 139, 0.12)',
+                color: '#64748b',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+            }}>
+                ❓ Boshqa
+            </span>
+        );
+    }
+
+    const configs = {
+        'Instagramda': { label: '📸 Instagram', bg: 'rgba(225, 48, 108, 0.12)', color: '#e1306c' },
+        'Telegramda': { label: '✈️ Telegram', bg: 'rgba(0, 136, 204, 0.12)', color: '#0088cc' },
+        'Facebookda': { label: '📘 Facebook', bg: 'rgba(24, 119, 242, 0.12)', color: '#1877f2' },
+        'Influencer': { label: '⭐ Influencer', bg: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b' },
+        'Referral': { label: '👥 Referral', bg: 'rgba(16, 185, 129, 0.12)', color: '#10b981' },
+        'YouTubeda': { label: '▶️ YouTube', bg: 'rgba(239, 68, 68, 0.12)', color: '#ef4444' },
+        'Odamlar orasida': { label: '🗣️ Odamlar orasida', bg: 'rgba(139, 92, 246, 0.12)', color: '#8b5cf6' },
+    };
+
+    const cfg = configs[source] || { label: source, bg: 'rgba(59, 130, 246, 0.12)', color: '#3b82f6' };
+
+    return (
+        <span style={{
+            fontSize: '11px',
+            padding: '3px 8px',
+            borderRadius: '6px',
+            background: cfg.bg,
+            color: cfg.color,
+            fontWeight: 600,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '4px'
+        }}>
+            {cfg.label}
+        </span>
+    );
+};
+
 const LeadsList = () => {
     // Context from LeadsPage
-    const { openEditModal, refreshTrigger, openCreateModal } = useOutletContext();
+    const { openEditModal, refreshTrigger, openCreateModal, updateTotalLeads } = useOutletContext();
 
     const formatDate = (dateStr) => {
         if (!dateStr) return "-";
         const date = new Date(dateStr);
-        const months = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
-            'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
-        return `${date.getDate()}-${months[date.getMonth()]} ${date.getFullYear()}`;
+        const months = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyun',
+            'Iyul', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek'];
+        return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
     };
 
     const [leads, setLeads] = useState([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
     const [filters, setFilters] = useState({
         search: '',
         status: '',
+        heard_source: '',
     });
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
 
     const [deleteModal, setDeleteModal] = useState({ open: false, lead: null });
     const [convertModal, setConvertModal] = useState({ isOpen: false, lead: null });
-    const [modalClosing, setModalClosing] = useState(false);
+    const [enrollModal, setEnrollModal] = useState({ isOpen: false, lead: null });
 
     // Debounce search
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -67,13 +122,13 @@ const LeadsList = () => {
     useEffect(() => {
         const handler = setTimeout(() => {
             setDebouncedSearch(filters.search);
-        }, 500);
+        }, 400);
         return () => clearTimeout(handler);
     }, [filters.search]);
 
     useEffect(() => {
         fetchLeads();
-    }, [page, debouncedSearch, filters.status, refreshTrigger]);
+    }, [page, debouncedSearch, filters.status, filters.heard_source, dateFrom, dateTo, refreshTrigger]);
 
     const fetchLeads = async () => {
         setLoading(true);
@@ -81,15 +136,21 @@ const LeadsList = () => {
             const params = {
                 page,
                 search: debouncedSearch,
-                status: filters.status
+                status: filters.status,
             };
+            if (filters.heard_source) params.heard_source = filters.heard_source;
+            if (dateFrom && isValidDateStr(dateFrom)) params.date_from = parseUIDateToApi(dateFrom);
+            if (dateTo && isValidDateStr(dateTo)) params.date_to = parseUIDateToApi(dateTo);
+
             const res = await leadService.getAll(params);
             const data = res.data;
             const results = Array.isArray(data) ? data : (data.results || []);
             setLeads(results);
 
             const count = data.count || results.length;
+            setTotalCount(count);
             setTotalPages(Math.ceil(count / 20) || 1);
+            if (updateTotalLeads) updateTotalLeads(count);
         } catch (error) {
             console.error("Leads fetch error:", error);
         } finally {
@@ -102,19 +163,11 @@ const LeadsList = () => {
         try {
             await leadService.delete(deleteModal.lead.id);
             toast.success("Lead o'chirildi");
-            closeDeleteModal();
+            setDeleteModal({ open: false, lead: null });
             fetchLeads();
         } catch (error) {
             toast.error("O'chirishda xatolik");
         }
-    };
-
-    const closeDeleteModal = () => {
-        setModalClosing(true);
-        setTimeout(() => {
-            setDeleteModal({ open: false, lead: null });
-            setModalClosing(false);
-        }, 300);
     };
 
     const handleFilterChange = (e) => {
@@ -126,12 +179,12 @@ const LeadsList = () => {
         const map = {
             'answered': { label: 'Javob berildi', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
             'not_answered': { label: 'Javob berilmadi', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' },
-            'client_answered': { label: 'Mijoz ko\'tardi', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
-            'client_not_answered': { label: 'Mijoz ko\'tarmadi', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
+            'client_answered': { label: 'Mijoz javob berdi', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
+            'client_not_answered': { label: "Mijoz ko'tarmadi", color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
             'busy': { label: 'Band', color: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)' },
-            'incorrect': { label: 'Noto\'g\'ri raqam', color: '#1f2937', bg: 'rgba(31, 41, 55, 0.1)' },
+            'incorrect': { label: "Noto'g'ri raqam", color: '#1f2937', bg: 'rgba(31, 41, 55, 0.1)' },
         };
-        const s = map[status] || { label: status, color: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)' };
+        const s = map[status] || { label: status || "Kutilmoqda", color: '#6b7280', bg: 'rgba(107, 114, 128, 0.1)' };
 
         return (
             <span style={{
@@ -149,7 +202,7 @@ const LeadsList = () => {
 
     return (
         <div className="leads-list-container animate-fadeIn">
-            {/* V2 Toolbar */}
+            {/* Toolbar */}
             <div className="leads-toolbar">
                 <div className="toolbar-left">
                     <div className="leads-search-box">
@@ -162,7 +215,57 @@ const LeadsList = () => {
                             onChange={handleFilterChange}
                         />
                     </div>
+
+                    <div className="leads-source-filter-box">
+                        <select
+                            name="heard_source"
+                            value={filters.heard_source}
+                            onChange={handleFilterChange}
+                            className="source-select-input"
+                        >
+                            <option value="">Barcha manbalar</option>
+                            <option value="Instagramda">📸 Instagram</option>
+                            <option value="Telegramda">✈️ Telegram</option>
+                            <option value="Facebookda">📘 Facebook</option>
+                            <option value="Influencer">⭐ Influencer</option>
+                            <option value="Referral">👥 Referral</option>
+                            <option value="YouTubeda">▶️ YouTube</option>
+                            <option value="Odamlar orasida">🗣️ Odamlar orasida</option>
+                            <option value="Xech qayerda">❓ Boshqa</option>
+                        </select>
+                    </div>
+
+                    <div className="date-filter-group">
+                        <div className="date-filter">
+                            <label>Dan</label>
+                            <input
+                                type="text"
+                                placeholder="KK.OO.YYYY"
+                                value={dateFrom}
+                                onChange={(e) => setDateFrom(formatDateInput(e.target.value))}
+                            />
+                        </div>
+                        <span className="date-filter-divider"></span>
+                        <div className="date-filter">
+                            <label>Gacha</label>
+                            <input
+                                type="text"
+                                placeholder="KK.OO.YYYY"
+                                value={dateTo}
+                                onChange={(e) => setDateTo(formatDateInput(e.target.value))}
+                            />
+                        </div>
+                        {(dateFrom || dateTo) && (
+                            <button className="clear-filter-btn" onClick={() => { setDateFrom(''); setDateTo(''); }}>✕</button>
+                        )}
+                    </div>
+
+                    <button className="btn-v2 btn-v2-dark" onClick={fetchLeads}>
+                        <RefreshIcon />
+                        <span>Yangilash</span>
+                    </button>
                 </div>
+
                 <div className="toolbar-right">
                     <button className="btn-v2 btn-v2-primary" onClick={() => openCreateModal()}>
                         <PlusIcon />
@@ -172,8 +275,8 @@ const LeadsList = () => {
             </div>
 
             {loading ? (
-                <div className="loading-state" style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
-                    <div className="spinner-border text-primary" role="status"></div>
+                <div className="loading-state" style={{ display: 'flex', justifyContent: 'center', padding: '60px' }}>
+                    <div className="spinner mx-auto"></div>
                 </div>
             ) : leads.length === 0 ? (
                 <div className="empty-state" style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-secondary)' }}>
@@ -190,6 +293,7 @@ const LeadsList = () => {
                                     <th># ID</th>
                                     <th>Mijoz</th>
                                     <th>Telefon</th>
+                                    <th>Manba (Marketing)</th>
                                     <th>Bosqich</th>
                                     <th>Status</th>
                                     <th>Operator</th>
@@ -202,61 +306,83 @@ const LeadsList = () => {
                                     <tr key={lead.id}>
                                         <td className="cell-number">#{lead.id}</td>
                                         <td>
-                                            <div className="cell-name">{lead.client_name || "Noma'lum"}</div>
+                                            <div className="cell-name font-semibold">{lead.client_name || "Noma'lum"}</div>
+                                            {lead.lead_turi && <span className="lead-type-badge">{lead.lead_turi}</span>}
                                         </td>
                                         <td>{lead.phone_number}</td>
+                                        <td>
+                                            <SourceBadge source={lead.heard_source} />
+                                        </td>
                                         <td>
                                             <span style={{
                                                 fontSize: '12px',
                                                 border: '1px solid var(--border-color)',
-                                                padding: '2px 8px',
+                                                padding: '3px 8px',
                                                 borderRadius: '6px',
                                                 background: 'var(--bg-tertiary)',
-                                                color: 'var(--text-secondary)'
+                                                color: 'var(--text-secondary)',
+                                                fontWeight: 500
                                             }}>
-                                                {lead.stage_name}
+                                                {lead.stage_name || lead.stage?.name || 'Bosqichsiz'}
                                             </span>
                                         </td>
                                         <td>{getStatusBadge(lead.call_status)}</td>
                                         <td>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                                 <div style={{
-                                                    width: 24, height: 24,
+                                                    width: 26, height: 26,
                                                     borderRadius: '50%',
-                                                    background: 'var(--bg-tertiary)',
+                                                    background: 'rgba(99, 102, 241, 0.15)',
+                                                    color: '#6366f1',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
-                                                    fontSize: '10px',
+                                                    fontSize: '11px',
                                                     fontWeight: 'bold',
-                                                    color: 'var(--text-secondary)'
                                                 }}>
                                                     {lead.operator_name ? lead.operator_name[0] : '?'}
                                                 </div>
-                                                <span style={{ fontSize: '13px' }}>{lead.operator_name}</span>
+                                                <span style={{ fontSize: '13px' }}>{lead.operator_name || "Belgilanmagan"}</span>
                                             </div>
                                         </td>
                                         <td style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
                                             {formatDate(lead.created_at)}
                                         </td>
                                         <td className="cell-actions" style={{ justifyContent: 'flex-end' }}>
-                                            <div className="table-actions">
+                                            <div className="table-actions flex items-center justify-end gap-1.5">
                                                 {!lead.is_converted && (
-                                                    <button
-                                                        className="btn-icon"
-                                                        onClick={() => setConvertModal({ isOpen: true, lead })}
-                                                        title="Mijozga aylantirish"
-                                                        style={{
-                                                            background: 'rgba(16, 185, 129, 0.1)',
-                                                            color: '#10b981',
-                                                            width: 32, height: 32,
-                                                            border: 'none', borderRadius: '8px',
-                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                            cursor: 'pointer'
-                                                        }}
-                                                    >
-                                                        <ConvertIcon />
-                                                    </button>
+                                                    <>
+                                                        <button
+                                                            className="btn-icon"
+                                                            onClick={() => setEnrollModal({ isOpen: true, lead })}
+                                                            title="O'quvchi sifatida qabul qilish"
+                                                            style={{
+                                                                background: 'rgba(59, 130, 246, 0.1)',
+                                                                color: '#3b82f6',
+                                                                width: 32, height: 32,
+                                                                border: 'none', borderRadius: '8px',
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            <AcademicCapIcon />
+                                                        </button>
+                                                        <button
+                                                            className="btn-icon"
+                                                            onClick={() => setConvertModal({ isOpen: true, lead })}
+                                                            title="Mijozga aylantirish"
+                                                            style={{
+                                                                background: 'rgba(16, 185, 129, 0.1)',
+                                                                color: '#10b981',
+                                                                width: 32, height: 32,
+                                                                border: 'none', borderRadius: '8px',
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                cursor: 'pointer'
+                                                            }}
+                                                        >
+                                                            <ConvertIcon />
+                                                        </button>
+                                                    </>
                                                 )}
                                                 <button
                                                     className="btn-icon btn-edit"
@@ -268,11 +394,10 @@ const LeadsList = () => {
                                                         width: 32, height: 32,
                                                         border: 'none', borderRadius: '8px',
                                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        cursor: 'pointer',
-                                                        marginLeft: '8px'
+                                                        cursor: 'pointer'
                                                     }}
                                                 >
-                                                    <EditIcon style={{ width: 16, height: 16 }} />
+                                                    <EditIcon style={{ width: 15, height: 15 }} />
                                                 </button>
                                                 <button
                                                     className="btn-icon btn-delete"
@@ -284,11 +409,10 @@ const LeadsList = () => {
                                                         width: 32, height: 32,
                                                         border: 'none', borderRadius: '8px',
                                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        cursor: 'pointer',
-                                                        marginLeft: '8px'
+                                                        cursor: 'pointer'
                                                     }}
                                                 >
-                                                    <TrashIcon style={{ width: 16, height: 16 }} />
+                                                    <TrashIcon style={{ width: 15, height: 15 }} />
                                                 </button>
                                             </div>
                                         </td>
@@ -301,7 +425,7 @@ const LeadsList = () => {
                     {totalPages > 1 && (
                         <div className="pagination-container">
                             <div className="pagination-info">
-                                Sahifa {page} / {totalPages}
+                                Jami {totalCount} ta lead (Sahifa {page} / {totalPages})
                             </div>
                             <div className="pagination-controls">
                                 <button
@@ -333,32 +457,39 @@ const LeadsList = () => {
                 </div>
             )}
 
-            {/* Delete Confirmation Modal */}
-            {
-                deleteModal.open && (
-                    <div className={`modal-overlay ${modalClosing ? 'modal-exit' : 'modal-enter'}`} onClick={closeDeleteModal}>
-                        <div className={`modal-content modal-confirm ${modalClosing ? 'modal-content-exit' : 'modal-content-enter'}`} onClick={e => e.stopPropagation()}>
-                            <div className="modal-confirm-icon danger">
-                                <TrashIcon style={{ width: 32, height: 32 }} />
-                            </div>
-                            <h3 className="modal-confirm-title">Leadni o'chirish</h3>
-                            <p className="modal-confirm-text">
-                                Haqiqatan ham ushbu leadni tizimdan butunlay o'chirib tashlamoqchimisiz?
-                                <br />
-                                <strong>{deleteModal.lead?.client_name || deleteModal.lead?.phone_number}</strong>
-                            </p>
-                            <div className="modal-confirm-actions">
-                                <button className="btn-v2 btn-v2-dark" onClick={closeDeleteModal}>
-                                    Bekor qilish
-                                </button>
-                                <button className="btn-v2 btn-v2-danger" onClick={handleDelete}>
-                                    O'chirish
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )
-            }
+            {/* Delete Modal */}
+            <Modal
+                isOpen={deleteModal.open}
+                onClose={() => setDeleteModal({ open: false, lead: null })}
+                title="Leadni o'chirish"
+                size="sm"
+                footer={
+                    <>
+                        <button
+                            type="button"
+                            className="btn-v2 btn-v2-secondary"
+                            onClick={() => setDeleteModal({ open: false, lead: null })}
+                        >
+                            Bekor qilish
+                        </button>
+                        <button
+                            type="button"
+                            className="btn-v2 btn-v2-danger"
+                            onClick={handleDelete}
+                        >
+                            O'chirish
+                        </button>
+                    </>
+                }
+            >
+                <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    Haqiqatan ham ushbu leadni butunlay o'chirib tashlamoqchimisiz?
+                    <br />
+                    <strong style={{ color: 'var(--text-primary)' }}>
+                        {deleteModal.lead?.client_name || deleteModal.lead?.phone_number}
+                    </strong>
+                </p>
+            </Modal>
 
             {/* Convert Lead Modal */}
             <ConvertLeadModal
@@ -367,7 +498,15 @@ const LeadsList = () => {
                 onClose={() => setConvertModal({ isOpen: false, lead: null })}
                 onSuccess={fetchLeads}
             />
-        </div >
+
+            {/* Enroll Student Modal */}
+            <EnrollStudentModal
+                isOpen={enrollModal.isOpen}
+                lead={enrollModal.lead}
+                onClose={() => setEnrollModal({ isOpen: false, lead: null })}
+                onSuccess={fetchLeads}
+            />
+        </div>
     );
 };
 

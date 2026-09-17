@@ -183,19 +183,23 @@ const LeadCard = React.memo(({ lead, onClick, onConvert, onEnroll, onDragStart, 
                     {getInitials(lead.client_name)}
                 </div>
                 <div className="lead-info">
-                    <span className="lead-name flex items-center gap-1">
-                        {lead.client_name || "Noma'lum"}
+                    <div className="lead-name-row">
+                        <span className="lead-name">
+                            {lead.client_name || "Noma'lum"}
+                        </span>
                         {lead.heard_source && lead.heard_source !== 'Xech qayerda' && (
-                            <span className="text-blue-400 opacity-80" title={lead.heard_source}>
+                            <span className="lead-source-badge" title={`Marketing manbasi: ${lead.heard_source}`}>
                                 <SourceIcon source={lead.heard_source} />
+                                <span>{lead.heard_source}</span>
                             </span>
                         )}
                         {lead.notes && lead.notes.startsWith('Formadan kelgan') && (
-                            <span className="text-indigo-400">
+                            <span className="lead-source-badge form-badge" title="Sayt formasidan kelgan">
                                 <FormSourceIcon />
+                                <span>Forma</span>
                             </span>
                         )}
-                    </span>
+                    </div>
                     <span className="lead-date">
                         <CalendarIcon /> {formatDateTime(lead.created_at)}
                     </span>
@@ -371,7 +375,9 @@ const LeadsKanban = () => {
             if (globalSearch) params.search = globalSearch;
             if (dateFrom && isValidDateStr(dateFrom)) params.date_from = parseUIDateToApi(dateFrom);
             if (dateTo && isValidDateStr(dateTo)) params.date_to = parseUIDateToApi(dateTo);
-            if (selectedSource) params.source_name = selectedSource;
+            if (selectedSource) {
+                params.heard_source = selectedSource;
+            }
 
             const [kanbanRes, statsRes] = await Promise.all([
                 leadService.getKanban(params),
@@ -514,7 +520,9 @@ const LeadsKanban = () => {
             if (globalSearch) params.search = globalSearch;
             if (dateFrom && isValidDateStr(dateFrom)) params.date_from = parseUIDateToApi(dateFrom);
             if (dateTo && isValidDateStr(dateTo)) params.date_to = parseUIDateToApi(dateTo);
-            if (selectedSource) params.source_name = selectedSource;
+            if (selectedSource) {
+                params.heard_source = selectedSource;
+            }
 
             const res = await leadService.getStageLeads(params);
             const newLeads = res.data.results || [];
@@ -557,7 +565,24 @@ const LeadsKanban = () => {
                 <div className="toolbar-left">
                     <div className="leads-search-box">
                         <SearchIcon />
-                        <input type="text" placeholder="Qidirish..." value={globalSearch} onChange={(e) => setGlobalSearch(e.target.value)} />
+                        <input type="text" placeholder="Qidirish (Ism, Telefon)..." value={globalSearch} onChange={(e) => setGlobalSearch(e.target.value)} />
+                    </div>
+                    <div className="leads-source-filter-box">
+                        <select
+                            value={selectedSource}
+                            onChange={(e) => setSelectedSource(e.target.value)}
+                            className="source-select-input"
+                        >
+                            <option value="">Barcha manbalar</option>
+                            <option value="Instagramda">📸 Instagram</option>
+                            <option value="Telegramda">✈️ Telegram</option>
+                            <option value="Facebookda">📘 Facebook</option>
+                            <option value="Influencer">⭐ Influencer</option>
+                            <option value="Referral">👥 Referral</option>
+                            <option value="YouTubeda">▶️ YouTube</option>
+                            <option value="Odamlar orasida">🗣️ Odamlar orasida</option>
+                            <option value="Xech qayerda">❓ Boshqa</option>
+                        </select>
                     </div>
                     <div className="date-filter-group">
                         <div className="date-filter"><label>Dan</label><input type="text" placeholder="KK.OO.YYYY" value={dateFrom} onChange={(e) => setDateFrom(formatDateInput(e.target.value))} /></div>

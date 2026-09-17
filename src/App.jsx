@@ -61,11 +61,11 @@ function App() {
 
                             <Route path="/clients" element={<ProtectedLayout allowedRoles={['admin', 'operator']}><ClientsList /></ProtectedLayout>} />
 
-                            <Route path="/leads" element={<ProtectedLayout allowedRoles={['admin', 'operator']}><LeadsPage /></ProtectedLayout>}>
+                            <Route path="/leads" element={<ProtectedLayout allowedRoles={['admin', 'operator', 'manager', 'sales_manager']}><LeadsPage /></ProtectedLayout>}>
                                 <Route index element={<Navigate to="kanban" replace />} />
                                 <Route path="kanban" element={<LeadsKanban />} />
-                                <Route path="list" element={<ProtectedLayout allowedRoles={['admin']}><LeadsList /></ProtectedLayout>} />
-                                <Route path="stats" element={<ProtectedLayout allowedRoles={['admin']}><LeadsStatistics /></ProtectedLayout>} />
+                                <Route path="list" element={<ProtectedLayout allowedRoles={['admin', 'operator', 'manager', 'sales_manager']}><LeadsList /></ProtectedLayout>} />
+                                <Route path="stats" element={<ProtectedLayout allowedRoles={['admin', 'operator', 'manager', 'sales_manager']}><LeadsStatistics /></ProtectedLayout>} />
                             </Route>
 
 

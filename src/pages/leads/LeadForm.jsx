@@ -77,11 +77,23 @@ const LeadForm = ({ isOpen, onClose, lead: initialLead, initialStageId, onSucces
         { value: 'client_not_answered', label: "Mijoz javob bermadi" }
     ];
 
+    const heardSourceOptions = [
+        { value: 'Instagramda', label: 'Instagramda 📸' },
+        { value: 'Telegramda', label: 'Telegramda ✈️' },
+        { value: 'Facebookda', label: 'Facebookda 📘' },
+        { value: 'Influencer', label: 'Influencer / Blogger ⭐' },
+        { value: 'Referral', label: 'Referral / Tavsiya 👥' },
+        { value: 'YouTubeda', label: 'YouTubeda ▶️' },
+        { value: 'Odamlar orasida', label: 'Odamlar orasida 🗣️' },
+        { value: 'Xech qayerda', label: 'Xech qayerda / Boshqa ❓' },
+    ];
+
     const [formData, setFormData] = useState({
         client_name: '',
         phone_number: '+',
         stage: '',
         call_status: '',
+        heard_source: 'Instagramda',
         duration_hours: 0,
         duration_minutes: 0,
         duration_seconds: 0,
@@ -119,12 +131,12 @@ const LeadForm = ({ isOpen, onClose, lead: initialLead, initialStageId, onSucces
                     seconds = parseInt(parts[2]) || 0;
                 }
 
-
                 setFormData({
                     client_name: initialLead.client_name || '',
                     phone_number: formatApiPhoneToUI(initialLead.phone_number || ''),
                     stage: (initialLead.stage?.id || initialLead.stage || '').toString(),
                     call_status: initialLead.call_status || '',
+                    heard_source: initialLead.heard_source || 'Xech qayerda',
                     duration_hours: hours,
                     duration_minutes: minutes,
                     duration_seconds: seconds,
@@ -138,6 +150,7 @@ const LeadForm = ({ isOpen, onClose, lead: initialLead, initialStageId, onSucces
                     phone_number: '',
                     stage: initialStageId ? initialStageId.toString() : '',
                     call_status: '',
+                    heard_source: 'Instagramda',
                     duration_hours: 0, duration_minutes: 0, duration_seconds: 0,
                     audio_file: null, audio_file_name: '',
                     lead_turi: '',
@@ -160,6 +173,7 @@ const LeadForm = ({ isOpen, onClose, lead: initialLead, initialStageId, onSucces
                     ...prev,
                     client_name: res.data.client_name || prev.client_name,
                     phone_number: formatApiPhoneToUI(res.data.phone_number) || prev.phone_number,
+                    heard_source: res.data.heard_source || prev.heard_source,
                     lead_turi: res.data.lead_turi || prev.lead_turi,
                     date_at: res.data.date_at ? formatDateForInput(res.data.date_at) : prev.date_at,
                     notes: res.data.notes || prev.notes
@@ -287,6 +301,7 @@ const LeadForm = ({ isOpen, onClose, lead: initialLead, initialStageId, onSucces
             }
 
             data.append('lead_turi', formData.lead_turi);
+            data.append('heard_source', formData.heard_source || 'Xech qayerda');
             if (formData.date_at) {
                 data.append('date_at', formData.date_at);
             }
@@ -503,39 +518,54 @@ const LeadForm = ({ isOpen, onClose, lead: initialLead, initialStageId, onSucces
                     </div>
 
 
-                    <div className="form-group">
-                        <label>Sana va vaqt</label>
-                        <input
-                            type="datetime-local"
-                            name="date_at"
-                            value={formData.date_at}
-                            onChange={handleChange}
-                        />
+                    <div className="form-row two-cols">
+                        <div className="form-group">
+                            <label>Bosqich (Status)</label>
+                            <select
+                                name="stage"
+                                value={formData.stage}
+                                onChange={handleChange}
+                            >
+                                <option value="">Bosqichni tanlang</option>
+                                {stages.map(s => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label>Marketing manbasi (Qayerdan)</label>
+                            <select
+                                name="heard_source"
+                                value={formData.heard_source}
+                                onChange={handleChange}
+                            >
+                                {heardSourceOptions.map(opt => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
-                    <div className="form-group">
-                        <label>Bosqich (Status)</label>
-                        <select
-                            name="stage"
-                            value={formData.stage}
-                            onChange={handleChange}
-                        >
-                            <option value="">Bosqichni tanlang</option>
-                            {stages.map(s => (
-                                <option key={s.id} value={s.id}>{s.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="form-group">
-                        <label>Lead turi</label>
-                        <input
-                            type="text"
-                            name="lead_turi"
-                            value={formData.lead_turi}
-                            onChange={handleChange}
-                            placeholder="Lead turini kiriting"
-                        />
+                    <div className="form-row two-cols">
+                        <div className="form-group">
+                            <label>Sana va vaqt</label>
+                            <input
+                                type="datetime-local"
+                                name="date_at"
+                                value={formData.date_at}
+                                onChange={handleChange}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>Lead turi</label>
+                            <input
+                                type="text"
+                                name="lead_turi"
+                                value={formData.lead_turi}
+                                onChange={handleChange}
+                                placeholder="Masalan: Maktab, Kurs, Bog'cha"
+                            />
+                        </div>
                     </div>
 
                     <div className="form-group notes-section">

@@ -948,3 +948,118 @@
     background: var(--bg-primary);
     color: var(--text-primary);
 }
+
+/* ==========================================
+   Leads Navigation Tabs
+   ========================================== */
+.leads-nav-tabs-wrapper {
+    margin-bottom: 20px;
+}
+
+.leads-nav-tabs {
+    display: inline-flex;
+    align-items: center;
+    background: var(--bg-secondary);
+    padding: 5px;
+    border-radius: 14px;
+    border: 1px solid var(--border-color);
+    gap: 4px;
+    box-shadow: var(--shadow-sm);
+}
+
+.leads-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 18px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+}
+
+.leads-tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.leads-tab-btn.active {
+    background: #6366f1;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+}
+
+/* ==========================================
+   Source Filter Dropdown in Toolbars
+   ========================================== */
+.leads-source-filter-box {
+    display: flex;
+    align-items: center;
+}
+
+.source-select-input {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--text-primary);
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 150px;
+}
+
+.source-select-input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+/* ==========================================
+   Lead Card Badges & Name Row
+   ========================================== */
+.lead-name-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.lead-source-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    background: rgba(99, 102, 241, 0.12);
+    color: #6366f1;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.lead-source-badge.form-badge {
+    background: rgba(139, 92, 246, 0.12);
+    color: #8b5cf6;
+}
+
+.form-group-sm select {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--text-primary);
+    transition: all 0.2s;
+    outline: none;
+}
+
+.form-group-sm select:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
