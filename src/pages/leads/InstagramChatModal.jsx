@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { instagramService } from '../../services/instagram';
+import useBodyScrollLock from '../../hooks/useBodyScrollLock';
 import { Send, X, RefreshCw, Instagram, User, Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
 import './InstagramChatModal.css';
 
 const InstagramChatModal = ({ isOpen, onClose, threadId, recipientId, username, accountId }) => {
+    useBodyScrollLock(isOpen);
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(true);
     const [inputText, setInputText] = useState('');
@@ -58,7 +61,7 @@ const InstagramChatModal = ({ isOpen, onClose, threadId, recipientId, username, 
 
     if (!isOpen) return null;
 
-    return (
+    return createPortal(
         <div className="chat-modal-overlay" onClick={onClose}>
             <div className="chat-modal-container" onClick={e => e.stopPropagation()}>
                 <div className="chat-modal-header">
@@ -129,7 +132,8 @@ const InstagramChatModal = ({ isOpen, onClose, threadId, recipientId, username, 
                     </button>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { FilterIcon, CloseIcon, RefreshCwIcon } from '../ContractIcons';
+import useBodyScrollLock from '../../../hooks/useBodyScrollLock';
 import api from '../../../services/api';
 import { formatDateInput, isValidDateStr, parseUIDateToApi, formatApiDateToUI } from '../../../utils/dateFormatter';
 
@@ -10,6 +11,7 @@ const ContractFilterDrawer = ({
     onFilter,
     initialFilters
 }) => {
+    useBodyScrollLock(isOpen);
     const [filters, setFilters] = useState(initialFilters);
     const [cities, setCities] = useState([]);
     const [buildings, setBuildings] = useState([]);

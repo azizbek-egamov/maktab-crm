@@ -7,6 +7,7 @@ export const studentService = {
     update: (id, data) => api.patch(`/students/${id}/`, data),
     delete: (id) => api.delete(`/students/${id}/`),
     getDebtors: () => api.get('/students/debtors/'),
+    getStatistics: () => api.get('/students/statistics/'),
     addParent: (id, data) => api.post(`/students/${id}/add_parent/`, data),
     updateParent: (id, linkId, data) => api.patch(`/students/${id}/parents/${linkId}/`, data),
     removeParent: (id, linkId) => api.delete(`/students/${id}/parents/${linkId}/`),

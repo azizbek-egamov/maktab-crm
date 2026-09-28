@@ -2,6 +2,7 @@ import { createPortal } from 'react-dom';
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
+import useBodyScrollLock from '../../hooks/useBodyScrollLock';
 import { getUsers, createUser, updateUser, deleteUser } from '../../services/users';
 import {
     SearchIcon,
@@ -24,6 +25,8 @@ const UsersPage = () => {
     const [modal, setModal] = useState({ open: false, type: null, user: null });
     const [modalClosing, setModalClosing] = useState(false);
     const [saving, setSaving] = useState(false);
+
+    useBodyScrollLock(modal.open);
 
     // Form data (Matching Django User Management fields)
     const [formData, setFormData] = useState({

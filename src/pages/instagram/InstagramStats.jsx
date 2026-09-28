@@ -12,6 +12,7 @@ import {
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
+import CustomChartTooltip from '../../components/ui/CustomChartTooltip';
 import { instagramService } from '../../services/instagram';
 import { toast } from 'sonner';
 import './InstagramStats.css';
@@ -709,26 +710,41 @@ const InstagramStats = () => {
                                 </div>
                                 <div className="ig-chart-container">
                                     <ResponsiveContainer width="100%" height={260}>
-                                        <AreaChart data={summary.daily_trends || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                        <AreaChart data={summary.daily_trends || []} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                                             <defs>
                                                 <linearGradient id="reachGradient" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#e1306c" stopOpacity={0.4} />
+                                                    <stop offset="5%" stopColor="#e1306c" stopOpacity={0.45} />
                                                     <stop offset="95%" stopColor="#e1306c" stopOpacity={0.0} />
                                                 </linearGradient>
                                                 <linearGradient id="interactionGradient" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#833ab4" stopOpacity={0.4} />
+                                                    <stop offset="5%" stopColor="#833ab4" stopOpacity={0.45} />
                                                     <stop offset="95%" stopColor="#833ab4" stopOpacity={0.0} />
                                                 </linearGradient>
                                             </defs>
-                                            <CartesianGrid strokeDasharray="3 3" stroke="#2a2e3d" vertical={false} />
-                                            <XAxis dataKey="formatted_date" stroke="#71788e" fontSize={12} tickLine={false} />
-                                            <YAxis stroke="#71788e" fontSize={12} tickLine={false} axisLine={false} />
-                                            <Tooltip
-                                                contentStyle={{ background: '#1c202f', border: '1px solid #2e354b', borderRadius: '8px', color: '#fff' }}
-                                                labelStyle={{ fontWeight: 'bold', color: '#ff758c' }}
+                                            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color, #2a2e3d)" opacity={0.35} vertical={false} />
+                                            <XAxis dataKey="formatted_date" stroke="var(--text-secondary, #71788e)" fontSize={12} tickLine={false} axisLine={{ stroke: 'var(--border-color, #2a2e3d)' }} />
+                                            <YAxis stroke="var(--text-secondary, #71788e)" fontSize={12} tickLine={false} axisLine={false} />
+                                            <Tooltip content={<CustomChartTooltip />} />
+                                            <Area 
+                                                type="monotone" 
+                                                dataKey="reach" 
+                                                name="Qamrov (Reach)" 
+                                                stroke="#e1306c" 
+                                                strokeWidth={2.5} 
+                                                fillOpacity={1} 
+                                                fill="url(#reachGradient)" 
+                                                activeDot={{ r: 6, fill: '#e1306c', stroke: '#fff', strokeWidth: 2 }}
                                             />
-                                            <Area type="monotone" dataKey="reach" name="Qamrov (Reach)" stroke="#e1306c" strokeWidth={2.5} fillOpacity={1} fill="url(#reachGradient)" />
-                                            <Area type="monotone" dataKey="interactions" name="Reaksiyalar" stroke="#833ab4" strokeWidth={2.5} fillOpacity={1} fill="url(#interactionGradient)" />
+                                            <Area 
+                                                type="monotone" 
+                                                dataKey="interactions" 
+                                                name="Reaksiyalar" 
+                                                stroke="#833ab4" 
+                                                strokeWidth={2.5} 
+                                                fillOpacity={1} 
+                                                fill="url(#interactionGradient)" 
+                                                activeDot={{ r: 6, fill: '#833ab4', stroke: '#fff', strokeWidth: 2 }}
+                                            />
                                         </AreaChart>
                                     </ResponsiveContainer>
                                 </div>

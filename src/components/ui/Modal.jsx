@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { createPortal } from 'react-dom';
+import useBodyScrollLock from '../../hooks/useBodyScrollLock';
 
 /**
  * Unified Modal Component - Standard for all modals in Bino CRM
@@ -20,6 +21,8 @@ const Modal = ({
     overlayClassName = '',
     contentClassName = '',
 }) => {
+    useBodyScrollLock(isOpen);
+
     if (!isOpen) return null;
 
     const sizeClasses = {

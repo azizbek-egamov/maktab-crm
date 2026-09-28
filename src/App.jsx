@@ -27,6 +27,8 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import StudentsList from './pages/students/StudentsList';
 import StudentDetails from './pages/students/StudentDetails';
 import ClassesPage from './pages/classes/ClassesPage';
+import AttendancePage from './pages/attendance/AttendancePage';
+import FinanceDashboard from './pages/finance/FinanceDashboard';
 import './index.css';
 
 // Layout wrapper for protected routes
@@ -50,24 +52,24 @@ function App() {
 
                             <Route path="/login" element={<Login />} />
 
-                            {/* Dashboard */}
+                            {/* Dashboard & Analytics */}
                             <Route path="/" element={<ProtectedLayout allowedRoles={['admin']}><Dashboard /></ProtectedLayout>} />
+                            <Route path="/finance" element={<ProtectedLayout allowedRoles={['admin']}><FinanceDashboard /></ProtectedLayout>} />
                             <Route path="/analytics" element={<ProtectedLayout allowedRoles={['admin']}><AnalyticsPage /></ProtectedLayout>} />
                             <Route path="/instagram" element={<ProtectedLayout allowedRoles={['admin']}><InstagramStats /></ProtectedLayout>} />
                             <Route path="/instagram/callback" element={<ProtectedLayout allowedRoles={['admin']}><InstagramCallback /></ProtectedLayout>} />
                             <Route path="/google-sheets" element={<ProtectedLayout allowedRoles={['admin']}><GoogleSheets /></ProtectedLayout>} />
                             <Route path="/users" element={<ProtectedLayout allowedRoles={['admin']}><UsersPage /></ProtectedLayout>} />
 
-
-                            <Route path="/clients" element={<ProtectedLayout allowedRoles={['admin', 'operator']}><ClientsList /></ProtectedLayout>} />
+                            {/* CRM Voronkasi */}
+                            <Route path="/clients" element={<ProtectedLayout allowedRoles={['admin', 'operator', 'sales_manager']}><ClientsList /></ProtectedLayout>} />
 
                             <Route path="/leads" element={<ProtectedLayout allowedRoles={['admin', 'operator', 'manager', 'sales_manager']}><LeadsPage /></ProtectedLayout>}>
                                 <Route index element={<Navigate to="kanban" replace />} />
                                 <Route path="kanban" element={<LeadsKanban />} />
-                                <Route path="list" element={<ProtectedLayout allowedRoles={['admin', 'operator', 'manager', 'sales_manager']}><LeadsList /></ProtectedLayout>} />
-                                <Route path="stats" element={<ProtectedLayout allowedRoles={['admin', 'operator', 'manager', 'sales_manager']}><LeadsStatistics /></ProtectedLayout>} />
+                                <Route path="list" element={<LeadsList />} />
+                                <Route path="stats" element={<LeadsStatistics />} />
                             </Route>
-
 
                             {/* Forms */}
                             <Route path="/forms" element={<ProtectedLayout allowedRoles={['admin']}><FormList /></ProtectedLayout>} />
@@ -76,13 +78,15 @@ function App() {
                             <Route path="/forms/:id/submissions" element={<ProtectedLayout allowedRoles={['admin']}><FormSubmissions /></ProtectedLayout>} />
                             <Route path="/forms/:id/preview" element={<PublicFormPage />} />
 
-                            {/* O'quvchilar */}
+                            {/* O'quvchilar, Sinflar va Davomat */}
                             <Route path="/students" element={<ProtectedLayout allowedRoles={['admin', 'registrator', 'teacher']}><StudentsList /></ProtectedLayout>} />
                             <Route path="/students/:id" element={<ProtectedLayout allowedRoles={['admin', 'registrator', 'teacher']}><StudentDetails /></ProtectedLayout>} />
-                            <Route path="/classes" element={<ProtectedLayout allowedRoles={['admin', 'registrator']}><ClassesPage /></ProtectedLayout>} />
+                            <Route path="/classes" element={<ProtectedLayout allowedRoles={['admin', 'registrator', 'teacher']}><ClassesPage /></ProtectedLayout>} />
+                            <Route path="/attendance" element={<ProtectedLayout allowedRoles={['admin', 'registrator', 'teacher']}><AttendancePage /></ProtectedLayout>} />
 
                             <Route path="*" element={<Navigate to="/" replace />} />
                         </Routes >
+
                     </BrowserRouter >
                     <Toaster
                         position="top-center"

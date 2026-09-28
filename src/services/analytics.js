@@ -8,6 +8,12 @@ export const analyticsService = {
     getSummary: async () => {
         return api.get('/analytics/summary/');
     },
+    getStudentsStats: async (params) => {
+        return api.get('/analytics/students_stats/', { params });
+    },
+    getSalesStats: async (params) => {
+        return api.get('/analytics/sales_stats/', { params });
+    },
     getOperatorFormalarStats: async (params) => {
         return api.get('/analytics/operator_formalar_stats/', { params });
     },
@@ -23,3 +29,5 @@ export const analyticsService = {
     getStats: getAnalytics,
     getAnalytics
 };
+
+export default analyticsService;

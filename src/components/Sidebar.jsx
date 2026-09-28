@@ -17,12 +17,10 @@ const Sidebar = () => {
     // Ochilgan menyu bo'limlari
     const [expandedMenus, setExpandedMenus] = useState(() => {
         const path = location.pathname;
-        if (path.startsWith('/buildings')) return ['buildings'];
-        if (path.startsWith('/homes')) return ['homes'];
-        if (path.startsWith('/clients')) return ['clients'];
+        if (path.startsWith('/students') || path.startsWith('/classes') || path.startsWith('/attendance')) return ['oquv'];
         if (path.startsWith('/contracts')) return ['contracts'];
-        if (path.startsWith('/leads')) return ['leads'];
-        if (path.startsWith('/expenses') || path.startsWith('/expense-categories')) return ['chiqimlar'];
+        if (path.startsWith('/leads') || path.startsWith('/clients')) return ['crm'];
+        if (path.startsWith('/finance')) return ['finance'];
         return [];
     });
 
@@ -54,34 +52,11 @@ const Sidebar = () => {
             icon: <HomeIcon />,
             label: 'Asosiy'
         },
-        // {
-        //     type: 'link',
-        //     path: '/cities',
-        //     icon: <CityIcon />,
-        //     label: 'Shaharlar'
-        // },
-        // {
-        //     type: 'link',
-        //     path: '/buildings',
-        //     icon: <BuildingIcon />,
-        //     label: 'Binolar'
-        // },
-        // {
-        //     type: 'group',
-        //     key: 'homes',
-        //     icon: <HomeAltIcon />,
-        //     label: 'Xonadonlar',
-        //     basePath: '/homes',
-        //     children: [
-        //         { path: '/homes', label: 'Xonadonlar ro\'yxati' },
-        //         { path: '/homes/create', label: 'Qo\'lda qo\'shish' },
-        //     ]
-        // },
         {
             type: 'link',
-            path: '/clients',
-            icon: <UsersIcon />,
-            label: 'Mijozlar'
+            path: '/finance',
+            icon: <WalletIcon />,
+            label: 'Moliya va Kassa'
         },
         {
             type: 'link',
@@ -97,9 +72,21 @@ const Sidebar = () => {
         },
         {
             type: 'link',
+            path: '/attendance',
+            icon: <ClipboardIcon />,
+            label: 'Davomat'
+        },
+        {
+            type: 'link',
             icon: <PhoneIcon />,
             path: '/leads',
             label: 'Leadlar'
+        },
+        {
+            type: 'link',
+            path: '/clients',
+            icon: <UsersIcon />,
+            label: 'Mijozlar'
         },
         {
             type: 'link',
@@ -130,26 +117,29 @@ const Sidebar = () => {
     // Filter menu items based on role
     const isOperator = user?.role === 'operator';
     const isTeacher = user?.role === 'teacher';
+    const isRegistrator = user?.role === 'registrator';
+    const isSalesManager = user?.role === 'sales_manager';
     const isAdmin = user?.role === 'admin' || user?.is_superuser || user?.is_staff;
 
     // Filter menu items based on role
     let filteredMenuItems = menuItems.filter(item => {
         if (isOperator) {
-            return ['/clients', '/leads'].includes(item.path);
+            return ['/leads', '/clients'].includes(item.path);
+        }
+        if (isSalesManager) {
+            return ['/leads', '/clients'].includes(item.path);
         }
         if (isTeacher) {
-            return ['/students'].includes(item.path);
+            return ['/students', '/classes', '/attendance'].includes(item.path);
         }
-        if (user?.role === 'registrator') {
-            return ['/clients', '/leads', '/students', '/classes'].includes(item.path);
+        if (isRegistrator) {
+            return ['/students', '/classes', '/attendance', '/clients', '/leads'].includes(item.path);
         }
         return true;
     });
 
-    // Faqat superuser uchun Foydalanuvchilar menyusi (already handled below but let's be safe)
-    // The loop below uses menuItems, so we need to update the variable used in the map
-
-    if (isAdmin && user?.is_superuser) {
+    // Faqat admin va superuser uchun Foydalanuvchilar menyusi
+    if (isAdmin) {
         filteredMenuItems.push({
             type: 'link',
             path: '/users',
@@ -157,6 +147,7 @@ const Sidebar = () => {
             label: 'Foydalanuvchilar'
         });
     }
+
 
     return (
         <>

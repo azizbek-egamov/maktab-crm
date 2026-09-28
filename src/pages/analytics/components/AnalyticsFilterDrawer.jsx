@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Filter, X, RefreshCcw } from 'lucide-react';
+import useBodyScrollLock from '../../../hooks/useBodyScrollLock';
 import { formatDateInput, isValidDateStr, parseUIDateToApi, formatApiDateToUI } from '../../../utils/dateFormatter';
 
 const AnalyticsFilterDrawer = ({
@@ -9,12 +10,13 @@ const AnalyticsFilterDrawer = ({
     onFilter,
     activeTab,
     initialFilters,
-    cities,
-    buildings,
-    stages,
-
-    operators
+    cities = [],
+    buildings = [],
+    classes = [],
+    stages = [],
+    operators = []
 }) => {
+    useBodyScrollLock(isOpen);
     const [filters, setFilters] = useState(initialFilters);
     const [closing, setClosing] = useState(false);
 
@@ -47,16 +49,12 @@ const AnalyticsFilterDrawer = ({
             const uiDate = appliedFilters.start_date.includes('-') ? formatApiDateToUI(appliedFilters.start_date) : appliedFilters.start_date;
             if (isValidDateStr(uiDate)) {
                 appliedFilters.start_date = parseUIDateToApi(uiDate);
-            } else {
-                appliedFilters.start_date = '';
             }
         }
         if (appliedFilters.end_date) {
             const uiDate = appliedFilters.end_date.includes('-') ? formatApiDateToUI(appliedFilters.end_date) : appliedFilters.end_date;
             if (isValidDateStr(uiDate)) {
                 appliedFilters.end_date = parseUIDateToApi(uiDate);
-            } else {
-                appliedFilters.end_date = '';
             }
         }
         onFilter(appliedFilters);
@@ -64,17 +62,14 @@ const AnalyticsFilterDrawer = ({
     };
 
     const handleReset = () => {
-        const resetData = activeTab === 'sales' ? {
-            start_date: new Date(new Date().setMonth(new Date().getMonth() - 3)).toISOString().split('T')[0],
-            end_date: new Date().toISOString().split('T')[0],
-            city: '',
-            building: '',
-            status: ''
-        } : {
+        const resetData = {
             start_date: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0],
             end_date: new Date().toISOString().split('T')[0],
+            school_class: '',
+            building: '',
+            gender: '',
+            status: '',
             operator: '',
-
             stage: '',
             call_status: ''
         };
@@ -85,21 +80,26 @@ const AnalyticsFilterDrawer = ({
 
     if (!isOpen && !closing) return null;
 
-    const filteredBuildings = filters.city
-        ? buildings.filter(b => String(b.city) === String(filters.city))
-        : buildings;
+    const getTabTitle = () => {
+        switch (activeTab) {
+            case 'students': return "O'quvchilar";
+            case 'sales': return "Sotuv va Moliya";
+            case 'marketing': return "Marketing";
+            default: return "Leadlar";
+        }
+    };
 
     return createPortal(
         <div className={`modal-overlay ${closing ? 'closing' : ''}`} onClick={handleClose}>
             <div
                 className={`modal-content modal-form ${closing ? 'closing' : ''}`}
                 onClick={(e) => e.stopPropagation()}
-                style={{ maxWidth: '420px' }}
+                style={{ maxWidth: '440px' }}
             >
                 <div className="modal-header">
                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <Filter size={18} />
-                        Filterlar ({activeTab === 'sales' ? 'Sotuvlar' : 'Leadlar'})
+                        Filterlar ({getTabTitle()})
                     </h3>
                     <button className="modal-close" onClick={handleClose}>
                         <X size={20} />
@@ -110,7 +110,7 @@ const AnalyticsFilterDrawer = ({
                     <div className="modal-form-body">
                         {/* Date Range Section */}
                         <div className="form-group">
-                            <label>Sana oralig'i</label>
+                            <label>Sana oralig'i (Boshlanish — Tugash)</label>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                                 <input
                                     type="text"
@@ -129,49 +129,95 @@ const AnalyticsFilterDrawer = ({
                             </div>
                         </div>
 
-                        {activeTab === 'sales' ? (
+                        {/* Students Tab Specific Filters */}
+                        {activeTab === 'students' && (
                             <>
-                                {/* City Section */}
                                 <div className="form-group">
-                                    <label>Shahar bo'yicha</label>
-                                    <select name="city" value={filters.city} onChange={handleChange}>
-                                        <option value="">Barchasi</option>
-                                        {cities.map(city => (
-                                            <option key={city.id} value={city.id}>{city.name}</option>
+                                    <label>Sinf / Guruh bo'yicha</label>
+                                    <select name="school_class" value={filters.school_class || ''} onChange={handleChange}>
+                                        <option value="">Barcha sinflar</option>
+                                        {classes.map(c => (
+                                            <option key={c.id} value={c.id}>{c.name}</option>
                                         ))}
                                     </select>
                                 </div>
 
-                                {/* Building Section */}
                                 <div className="form-group">
-                                    <label>Binolar bo'yicha</label>
-                                    <select name="building" value={filters.building} onChange={handleChange}>
-                                        <option value="">Barchasi</option>
-                                        {filteredBuildings.map(building => (
-                                            <option key={building.id} value={building.id}>{building.name}</option>
+                                    <label>Bino / Filial bo'yicha</label>
+                                    <select name="building" value={filters.building || ''} onChange={handleChange}>
+                                        <option value="">Barcha binolar</option>
+                                        {buildings.map(b => (
+                                            <option key={b.id} value={b.id}>{b.name}</option>
                                         ))}
                                     </select>
                                 </div>
 
-                                {/* Status Section */}
                                 <div className="form-group">
-                                    <label>Shartnoma holati</label>
-                                    <select name="status" value={filters.status} onChange={handleChange}>
+                                    <label>Jinsi bo'yicha</label>
+                                    <select name="gender" value={filters.gender || ''} onChange={handleChange}>
                                         <option value="">Barchasi</option>
-                                        <option value="PENDING">Kutilmoqda</option>
-                                        <option value="ACTIVE">Faol</option>
-                                        <option value="COMPLETED">Yakunlangan</option>
-                                        <option value="CANCELLED">Bekor qilingan</option>
+                                        <option value="male">O'g'il bolalar</option>
+                                        <option value="female">Qiz bolalar</option>
+                                    </select>
+                                </div>
+
+                                <div className="form-group">
+                                    <label>O'quvchi holati</label>
+                                    <select name="status" value={filters.status || ''} onChange={handleChange}>
+                                        <option value="">Barchasi</option>
+                                        <option value="active">Faol</option>
+                                        <option value="inactive">Nofaol</option>
+                                        <option value="expelled">Chetlatilgan</option>
+                                        <option value="graduated">Bitirgan</option>
+                                        <option value="on_leave">Vaqtincha ketgan</option>
                                     </select>
                                 </div>
                             </>
-                        ) : (
+                        )}
+
+                        {/* Sales Tab Specific Filters */}
+                        {activeTab === 'sales' && (
                             <>
-                                {/* Operator Section */}
+                                <div className="form-group">
+                                    <label>Sinf / Guruh bo'yicha</label>
+                                    <select name="school_class" value={filters.school_class || ''} onChange={handleChange}>
+                                        <option value="">Barcha sinflar</option>
+                                        {classes.map(c => (
+                                            <option key={c.id} value={c.id}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="form-group">
+                                    <label>Bino / Filial bo'yicha</label>
+                                    <select name="building" value={filters.building || ''} onChange={handleChange}>
+                                        <option value="">Barcha binolar</option>
+                                        {buildings.map(b => (
+                                            <option key={b.id} value={b.id}>{b.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="form-group">
+                                    <label>Shartnoma holati</label>
+                                    <select name="status" value={filters.status || ''} onChange={handleChange}>
+                                        <option value="">Barchasi</option>
+                                        <option value="active">Faol</option>
+                                        <option value="pending">Rasmiylashtirilmoqda</option>
+                                        <option value="paid">To'liq to'langan</option>
+                                        <option value="cancelled">Bekor qilingan</option>
+                                    </select>
+                                </div>
+                            </>
+                        )}
+
+                        {/* Leads Tab Specific Filters */}
+                        {activeTab === 'leads' && (
+                            <>
                                 <div className="form-group">
                                     <label>Operator bo'yicha</label>
-                                    <select name="operator" value={filters.operator} onChange={handleChange}>
-                                        <option value="">Barchasi</option>
+                                    <select name="operator" value={filters.operator || ''} onChange={handleChange}>
+                                        <option value="">Barcha operatorlar</option>
                                         {operators.map((op, i) => {
                                             const val = typeof op === 'object' ? op.id : op;
                                             const label = typeof op === 'object' ? (op.first_name ? `${op.first_name} ${op.last_name || ''}` : op.username) : op;
@@ -182,21 +228,19 @@ const AnalyticsFilterDrawer = ({
                                     </select>
                                 </div>
 
-                                {/* Stage Section */}
                                 <div className="form-group">
                                     <label>Bosqich bo'yicha</label>
-                                    <select name="stage" value={filters.stage} onChange={handleChange}>
-                                        <option value="">Barchasi</option>
+                                    <select name="stage" value={filters.stage || ''} onChange={handleChange}>
+                                        <option value="">Barcha bosqichlar</option>
                                         {Array.isArray(stages) && stages.map(s => (
                                             <option key={s.id} value={s.id}>{s.name}</option>
                                         ))}
                                     </select>
                                 </div>
 
-                                {/* Call Status Section */}
                                 <div className="form-group">
                                     <label>Qo'ng'iroq holati</label>
-                                    <select name="call_status" value={filters.call_status} onChange={handleChange}>
+                                    <select name="call_status" value={filters.call_status || ''} onChange={handleChange}>
                                         <option value="">Barchasi</option>
                                         <option value="answered">Javob berildi</option>
                                         <option value="not_answered">Javob berilmadi</option>

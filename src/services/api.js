@@ -1,25 +1,57 @@
 import axios from 'axios';
 
-// Dynamic API URL based on hostname and environment variables
-export const getApiUrl = () => {
-    const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+// Domain va API URL lar mosligi (JSON xaritasi)
+// Buni .env da VITE_API_DOMAIN_MAP orqali ham berish mumkin
+const DEFAULT_DOMAIN_MAP = {
+    'localhost': 'http://localhost:8000/api',
+    '127.0.0.1': 'http://localhost:8000/api',
+    'maktab.ardentsoft.uz': 'https://maktab.api.ardentsoft.uz/api',
+    // Kelajakda qo'shiladigan yangi domenlar uchun:
+    // 'boshqa-maktab.uz': 'https://api.boshqa-maktab.uz/api',
+};
 
-    // 1. Local development
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+// Domen yoki Hostname bo'yicha to'g'ri API URL ni aniqlash
+export const getApiUrl = () => {
+    if (typeof window === 'undefined') {
         return import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
     }
 
-    // 2. Production domain (ardentsoft.uz)
-    if (hostname.includes('ardentsoft.uz')) {
-        return 'https://maktab.api.ardentsoft.uz/api';
+    const hostname = window.location.hostname;
+    const origin = window.location.origin;
+
+    // 1. .env dagi VITE_API_DOMAIN_MAP (JSON formatda) tekshirish
+    if (import.meta.env.VITE_API_DOMAIN_MAP) {
+        try {
+            const envMap = JSON.parse(import.meta.env.VITE_API_DOMAIN_MAP);
+            if (envMap[hostname]) return envMap[hostname];
+            if (envMap[origin]) return envMap[origin];
+        } catch (e) {
+            console.error('VITE_API_DOMAIN_MAP JSON parslashda xatolik:', e);
+        }
     }
 
-    // 3. Custom environment variable (if not localhost)
-    if (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('localhost')) {
+    // 2. Ichki DEFAULT_DOMAIN_MAP dan qidirish
+    if (DEFAULT_DOMAIN_MAP[hostname]) {
+        return DEFAULT_DOMAIN_MAP[hostname];
+    }
+
+    // 3. Subdomain yoki qisman moslikni tekshirish (masalan *.ardentsoft.uz)
+    for (const [domainKey, apiUrl] of Object.entries(DEFAULT_DOMAIN_MAP)) {
+        if (hostname.endsWith(domainKey)) {
+            return apiUrl;
+        }
+    }
+
+    // 4. .env dagi oddiy VITE_API_URL mavjud bo'lsa
+    if (import.meta.env.VITE_API_URL) {
         return import.meta.env.VITE_API_URL;
     }
 
-    // 4. Default Production API fallback
+    // 5. Standart fallback (ishlab chiqarish yoki localhost)
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://localhost:8000/api';
+    }
+
     return 'https://maktab.api.ardentsoft.uz/api';
 };
 

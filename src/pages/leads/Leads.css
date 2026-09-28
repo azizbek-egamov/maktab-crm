@@ -201,6 +201,10 @@
 .leads-search-box svg {
     color: var(--text-secondary);
     flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    max-width: 18px;
+    max-height: 18px;
 }
 
 .leads-search-box input {
@@ -1063,3 +1067,82 @@
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
+
+/* ==========================================
+   Leads List Table View Styling
+   ========================================== */
+.leads-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+.leads-list-container .card-body {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+.leads-list-container .responsive-table {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.leads-list-container .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.leads-list-container .data-table th {
+    padding: 14px 18px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
+}
+
+.leads-list-container .data-table td {
+    padding: 14px 18px;
+    font-size: 13.5px;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.leads-list-container .data-table tbody tr {
+    transition: background 0.15s ease;
+}
+
+.leads-list-container .data-table tbody tr:hover {
+    background: var(--bg-tertiary);
+}
+
+.leads-list-container .cell-number {
+    font-weight: 700;
+    color: var(--accent-primary, #6366f1);
+    font-size: 12.5px;
+}
+
+.leads-list-container .cell-name {
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.leads-list-container .lead-type-badge {
+    display: inline-block;
+    font-size: 10.5px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(99, 102, 241, 0.1);
+    color: #6366f1;
+    margin-top: 3px;
+    font-weight: 600;
+}

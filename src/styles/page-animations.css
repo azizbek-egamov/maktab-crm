@@ -1,0 +1,261 @@
+/* =========================================================
+   UNIVERSAL PAGE & ELEMENT ENTRANCE ANIMATIONS SYSTEM
+   Bino CRM - Fluid & Modern Micro-Interactions
+   ========================================================= */
+
+/* --- Keyframe Definitions --- */
+
+@keyframes globalPageEntrance {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes globalCardRise {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes globalChartPop {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes globalRowCascade {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes globalHeaderSlideDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes globalBadgePulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* --- Universal Page Container Animation --- */
+
+main.main-content > *,
+.dashboard-content,
+.analytics-page,
+.clients-page,
+.leads-page,
+.leads-kanban-page,
+.leads-list-container,
+.students-list-container,
+.student-details-container,
+.classes-page-container,
+.attendance-page-container,
+.finance-dashboard,
+.users-page,
+.form-list-container,
+.google-sheets-container,
+.instagram-stats-container {
+  animation: globalPageEntrance 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  will-change: transform, opacity;
+}
+
+/* --- Header Animations --- */
+
+.dashboard-header,
+.analytics-header,
+.page-header,
+.clients-header,
+.leads-header,
+.students-header,
+.classes-header,
+.finance-header {
+  animation: globalHeaderSlideDown 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* --- Staggered KPI & Stat Cards Animations --- */
+
+.stats-grid > *,
+.kpi-grid > *,
+.finance-stats-grid > *,
+.summary-cards-grid > * {
+  animation: globalCardRise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.stats-grid > *:nth-child(1),
+.kpi-grid > *:nth-child(1),
+.finance-stats-grid > *:nth-child(1) {
+  animation-delay: 0.04s;
+}
+
+.stats-grid > *:nth-child(2),
+.kpi-grid > *:nth-child(2),
+.finance-stats-grid > *:nth-child(2) {
+  animation-delay: 0.08s;
+}
+
+.stats-grid > *:nth-child(3),
+.kpi-grid > *:nth-child(3),
+.finance-stats-grid > *:nth-child(3) {
+  animation-delay: 0.12s;
+}
+
+.stats-grid > *:nth-child(4),
+.kpi-grid > *:nth-child(4),
+.finance-stats-grid > *:nth-child(4) {
+  animation-delay: 0.16s;
+}
+
+.stats-grid > *:nth-child(5),
+.kpi-grid > *:nth-child(5),
+.finance-stats-grid > *:nth-child(5) {
+  animation-delay: 0.20s;
+}
+
+.stats-grid > *:nth-child(6),
+.kpi-grid > *:nth-child(6),
+.finance-stats-grid > *:nth-child(6) {
+  animation-delay: 0.24s;
+}
+
+/* --- Charts Grids & Cards Animations --- */
+
+.charts-grid-layout > *,
+.charts-grid-2col > *,
+.charts-grid-3col > *,
+.chart-card,
+.funnel-card {
+  animation: globalChartPop 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.charts-grid-layout > *:nth-child(1),
+.charts-grid-2col > *:nth-child(1),
+.charts-grid-3col > *:nth-child(1) {
+  animation-delay: 0.12s;
+}
+
+.charts-grid-layout > *:nth-child(2),
+.charts-grid-2col > *:nth-child(2),
+.charts-grid-3col > *:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.charts-grid-layout > *:nth-child(3),
+.charts-grid-2col > *:nth-child(3),
+.charts-grid-3col > *:nth-child(3) {
+  animation-delay: 0.24s;
+}
+
+.charts-grid-layout > *:nth-child(4),
+.charts-grid-2col > *:nth-child(4),
+.charts-grid-3col > *:nth-child(4) {
+  animation-delay: 0.30s;
+}
+
+/* --- Table & List Cards Entrance --- */
+
+.analytics-table-card,
+.table-card,
+.clients-table-container,
+.students-table-container,
+.data-table-container,
+.classes-list-container {
+  animation: globalCardRise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.16s;
+}
+
+/* --- Staggered Table Rows Waterfall Effect --- */
+
+.analytics-table tbody tr,
+.clients-table tbody tr,
+.students-table tbody tr,
+.data-table tbody tr,
+table tbody tr {
+  animation: globalRowCascade 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+table tbody tr:nth-child(1) { animation-delay: 0.03s; }
+table tbody tr:nth-child(2) { animation-delay: 0.06s; }
+table tbody tr:nth-child(3) { animation-delay: 0.09s; }
+table tbody tr:nth-child(4) { animation-delay: 0.12s; }
+table tbody tr:nth-child(5) { animation-delay: 0.15s; }
+table tbody tr:nth-child(6) { animation-delay: 0.18s; }
+table tbody tr:nth-child(7) { animation-delay: 0.21s; }
+table tbody tr:nth-child(8) { animation-delay: 0.24s; }
+table tbody tr:nth-child(9) { animation-delay: 0.27s; }
+table tbody tr:nth-child(10) { animation-delay: 0.30s; }
+table tbody tr:nth-child(n+11) { animation-delay: 0.33s; }
+
+/* --- Kanban Columns & Cards Animations --- */
+
+.kanban-column {
+  animation: globalCardRise 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.kanban-column:nth-child(1) { animation-delay: 0.05s; }
+.kanban-column:nth-child(2) { animation-delay: 0.10s; }
+.kanban-column:nth-child(3) { animation-delay: 0.15s; }
+.kanban-column:nth-child(4) { animation-delay: 0.20s; }
+.kanban-column:nth-child(5) { animation-delay: 0.25s; }
+.kanban-column:nth-child(n+6) { animation-delay: 0.30s; }
+
+.kanban-card,
+.lead-card {
+  animation: globalRowCascade 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* --- Reusable Animation Utility Classes --- */
+
+.animate-fadeIn {
+  animation: globalPageEntrance 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+.animate-slideUp {
+  animation: globalCardRise 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+.animate-scaleUp {
+  animation: globalChartPop 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

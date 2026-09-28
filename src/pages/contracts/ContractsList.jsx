@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { contractService } from '../../services/contracts';
+import useBodyScrollLock from '../../hooks/useBodyScrollLock';
 import {
     PlusIcon,
     SearchIcon,
@@ -55,6 +56,8 @@ const ContractsList = () => {
     const [paymentLoading, setPaymentLoading] = useState(false);
     const [paymentError, setPaymentError] = useState('');
     const [deletingId, setDeletingId] = useState(null);
+
+    useBodyScrollLock(detailModalOpen || paymentModalOpen || isFilterOpen);
 
     const fetchContracts = async () => {
         setLoading(true);

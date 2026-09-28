@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Users, GraduationCap, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { schoolClassService } from '../../services/students';
+import useBodyScrollLock from '../../hooks/useBodyScrollLock';
 import '../students/Students.css';
 
 const formatUzbekDate = (dateStr) => {
@@ -32,6 +34,8 @@ const ClassesPage = () => {
     const [form, setForm] = useState({
         name: '', grade: 1, section: 'A', max_students: 30,
     });
+
+    useBodyScrollLock(showForm || deleteModal.open);
 
     const load = async () => {
         setLoading(true);
@@ -165,7 +169,7 @@ const ClassesPage = () => {
             </div>
 
 
-            {showForm && (
+            {showForm && createPortal(
                 <div className="modal-overlay" onClick={() => setShowForm(false)}>
                     <div className="modal-content modal-form" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
@@ -198,10 +202,11 @@ const ClassesPage = () => {
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
-            {deleteModal.open && (
+            {deleteModal.open && createPortal(
                 <div className="modal-overlay" onClick={() => setDeleteModal({ open: false, schoolClass: null })}>
                     <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header">
@@ -227,7 +232,8 @@ const ClassesPage = () => {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

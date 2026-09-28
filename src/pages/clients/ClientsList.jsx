@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { clientService } from '../../services/clients';
+import useBodyScrollLock from '../../hooks/useBodyScrollLock';
 
 import { useAuth } from '../../context/AuthContext';
 import { toast } from 'sonner';
@@ -71,6 +72,8 @@ const ClientsList = () => {
     const [selectedOperatorId, setSelectedOperatorId] = useState('');
     const [broadcastMessage, setBroadcastMessage] = useState('');
     const [sendingBroadcast, setSendingBroadcast] = useState(false);
+
+    useBodyScrollLock(modal.open || bulkSmsModal || broadcastModal || smsModal.open);
 
 
     useEffect(() => {

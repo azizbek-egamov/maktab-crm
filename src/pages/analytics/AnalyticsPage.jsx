@@ -1,1277 +1,1228 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    Users, Phone, TrendingUp, Calendar, Filter, Download,
-    CheckCircle, XCircle, Clock, ArrowUpRight, ArrowDownRight, X
+    GraduationCap,
+    DollarSign,
+    Users,
+    TrendingUp,
+    AlertCircle,
+    Calendar,
+    Filter,
+    Download,
+    RefreshCw,
+    Building2,
+    PieChart as PieIcon,
+    BarChart3,
+    ArrowUpRight,
+    ArrowDownRight,
+    Sparkles,
+    Layers,
+    Award,
+    CheckCircle2,
+    Clock,
+    Target,
+    PhoneCall,
+    Megaphone,
+    Share2,
+    CreditCard,
+    Wallet,
+    Percent,
+    UserCheck,
+    UserX,
+    Briefcase,
+    Inbox,
+    Info
 } from 'lucide-react';
-
-// amCharts 5 Imports
-import { Root, Tooltip, Legend, color, percent } from "@amcharts/amcharts5";
-import { XYChart, DateAxis, AxisRendererX, AxisRendererY, ValueAxis, LineSeries, CategoryAxis, ColumnSeries } from "@amcharts/amcharts5/xy";
-import { PieChart, PieSeries, SlicedChart, FunnelSeries } from "@amcharts/amcharts5/percent";
-import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
-import am5themes_Dark from "@amcharts/amcharts5/themes/Dark";
-
-import AnalyticsFilterDrawer from './components/AnalyticsFilterDrawer';
-import { getAnalytics, analyticsService } from '../../services/analytics';
-import { getUsers } from '../../services/users';
+import {
+    ResponsiveContainer,
+    AreaChart,
+    Area,
+    BarChart,
+    Bar,
+    LineChart,
+    Line,
+    PieChart,
+    Pie,
+    Cell,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ComposedChart
+} from 'recharts';
 import { toast } from 'sonner';
-import { formatDateInput, isValidDateStr, parseUIDateToApi, formatApiDateToUI } from '../../utils/dateFormatter';
-import './Analytics.css';
+import usePageTitle from '../../hooks/usePageTitle';
+import analyticsService from '../../services/analytics';
 import api from '../../services/api';
+import AnalyticsFilterDrawer from './components/AnalyticsFilterDrawer';
+import CustomChartTooltip from '../../components/ui/CustomChartTooltip';
+import { UITooltip, InfoTooltip } from '../../components/ui/UITooltip';
+import { formatApiDateToUI, parseUIDateToApi, isValidDateStr } from '../../utils/dateFormatter';
+import './Analytics.css';
+
+const TABS = [
+    { id: 'students', label: "O'quvchilar Analitikasi", icon: GraduationCap },
+    { id: 'sales', label: "Sotuv va Moliya", icon: DollarSign },
+    { id: 'leads', label: "Leadlar va Voronka", icon: Target },
+    { id: 'marketing', label: "Marketing va Manbalar", icon: Megaphone }
+];
+
+const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#8b5cf6', '#14b8a6', '#f43f5e'];
+
+const formatMoney = (amount) => {
+    if (!amount && amount !== 0) return "0 so'm";
+    return Number(amount).toLocaleString('uz-UZ') + " so'm";
+};
 
 const AnalyticsPage = () => {
+    usePageTitle('Analitika va BI');
+
+    const [activeTab, setActiveTab] = useState('students');
     const [loading, setLoading] = useState(true);
-    const [data, setData] = useState(null);
-    const [formalarData, setFormalarData] = useState(null);
+    const [filterOpen, setFilterOpen] = useState(false);
+
+    // Data states
+    const [studentsData, setStudentsData] = useState(null);
+    const [salesData, setSalesData] = useState(null);
+    const [leadsData, setLeadsData] = useState(null);
     const [marketingData, setMarketingData] = useState(null);
 
-    const [filterOpen, setFilterOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState('leads'); // leads | sales (future)
-    const [selectedOperator, setSelectedOperator] = useState(null);
-    const [hiddenStages, setHiddenStages] = useState([]); // Track hidden stage names for filtering
+    // Filter reference data
+    const [classes, setClasses] = useState([]);
+    const [buildings, setBuildings] = useState([]);
+    const [operators, setOperators] = useState([]);
+    const [stages, setStages] = useState([]);
 
-    // Filter State
+    // Global Filter state
     const [filters, setFilters] = useState({
-        start_date: formatApiDateToUI(new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0]),
-        end_date: formatApiDateToUI(new Date().toISOString().split('T')[0]),
+        start_date: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0],
+        end_date: new Date().toISOString().split('T')[0],
+        school_class: '',
+        building: '',
+        gender: '',
+        status: '',
         operator: '',
-
         stage: '',
         call_status: ''
     });
-
-    // Reference data for filters
-    const [operators, setOperators] = useState([]);
-
-    const [stages, setStages] = useState([]);
 
     useEffect(() => {
         loadReferenceData();
     }, []);
 
     useEffect(() => {
-        fetchAnalytics();
-    }, [filters]);
+        fetchTabData(activeTab, filters);
+    }, [activeTab, filters]);
 
     const loadReferenceData = async () => {
         try {
-            const [usersRes, stagesRes] = await Promise.all([
-                api.get('/users/'),
-                api.get('/lead-stages/')
+            const [classesRes, usersRes, stagesRes] = await Promise.all([
+                api.get('/school-classes/').catch(() => api.get('/classes/').catch(() => ({ data: [] }))),
+                api.get('/users/').catch(() => ({ data: [] })),
+                api.get('/lead-stages/').catch(() => ({ data: [] }))
             ]);
-            setOperators(usersRes.data.results || usersRes.data || []);
-            setStages(stagesRes.data.results || stagesRes.data || []);
+            setClasses(Array.isArray(classesRes.data) ? classesRes.data : classesRes.data.results || []);
+            setOperators(Array.isArray(usersRes.data) ? usersRes.data : usersRes.data.results || []);
+            setStages(Array.isArray(stagesRes.data) ? stagesRes.data : stagesRes.data.results || []);
         } catch (e) {
+            console.error("Reference data load error:", e);
         }
     };
 
-    const fetchAnalytics = async () => {
-        const uiStart = filters.start_date && filters.start_date.includes('-') ? formatApiDateToUI(filters.start_date) : filters.start_date;
-        const uiEnd = filters.end_date && filters.end_date.includes('-') ? formatApiDateToUI(filters.end_date) : filters.end_date;
-        if (uiStart && !isValidDateStr(uiStart)) return;
-        if (uiEnd && !isValidDateStr(uiEnd)) return;
-
+    const fetchTabData = async (tab, appliedFilters) => {
         setLoading(true);
+        const params = {
+            start_date: appliedFilters.start_date || undefined,
+            end_date: appliedFilters.end_date || undefined,
+            school_class: appliedFilters.school_class || undefined,
+            building: appliedFilters.building || undefined,
+            gender: appliedFilters.gender || undefined,
+            status: appliedFilters.status || undefined,
+            operator: appliedFilters.operator || undefined,
+            stage: appliedFilters.stage || undefined,
+            call_status: appliedFilters.call_status || undefined
+        };
+
         try {
-            const apiStart = filters.start_date && filters.start_date.includes('-') ? filters.start_date : parseUIDateToApi(filters.start_date);
-            const apiEnd = filters.end_date && filters.end_date.includes('-') ? filters.end_date : parseUIDateToApi(filters.end_date);
-
-            const [res, formalarRes, marketingRes] = await Promise.all([
-                analyticsService.getStats({
-                    start_date: apiStart,
-                    end_date: apiEnd,
-                    stage: filters.stage || undefined,
-                    operator: filters.operator || undefined
-                }),
-                analyticsService.getFormalarStats({
-                    start_date: apiStart,
-                    end_date: apiEnd
-                }),
-                analyticsService.getMarketingStats({
-                    start_date: apiStart,
-                    end_date: apiEnd
-                })
-            ]);
-
-            setData(res.data);
-            setFormalarData(formalarRes.data);
-            setMarketingData(marketingRes.data);
+            if (tab === 'students') {
+                const res = await analyticsService.getStudentsStats(params);
+                setStudentsData(res.data);
+            } else if (tab === 'sales') {
+                const res = await analyticsService.getSalesStats(params);
+                setSalesData(res.data);
+            } else if (tab === 'leads') {
+                const res = await analyticsService.getStats(params);
+                setLeadsData(res.data);
+            } else if (tab === 'marketing') {
+                const res = await analyticsService.getMarketingStats(params);
+                setMarketingData(res.data);
+            }
         } catch (error) {
-            console.error("fetchAnalytics error details:", error);
-            toast.error("Analitika ma'lumotlarini yuklashda xatolik");
+            console.error(`Analytics error for ${tab}:`, error);
+            toast.error("Statistika ma'lumotlarini yuklashda xatolik yuz berdi");
         } finally {
             setLoading(false);
         }
     };
 
-    const handleFilter = (newFilters) => {
-        setFilters(newFilters);
-    };
+    const handleExportCSV = () => {
+        try {
+            let csvContent = "data:text/csv;charset=utf-8,";
+            let filename = `analitika_${activeTab}_${new Date().toISOString().slice(0, 10)}.csv`;
 
-    // amCharts Helper function to create root and apply themes
-    const createRoot = (id) => {
-        const el = typeof id === 'string' ? document.getElementById(id) : id;
-        if (!el) return null;
-        if (el._amchartsRoot) {
-            el._amchartsRoot.dispose();
+            if (activeTab === 'students' && studentsData?.classes_breakdown) {
+                csvContent += "Sinf,O'quvchilar Soni,Sig'im,Bo'sh O'rinlar,To'lganlik Foizi\n";
+                studentsData.classes_breakdown.forEach(c => {
+                    csvContent += `"${c.name}",${c.student_count},${c.capacity},${c.available_seats},${c.fill_rate}%\n`;
+                });
+            } else if (activeTab === 'sales' && salesData?.sales_trend) {
+                csvContent += "Oy,Yig'ilgan Summa,Shartnomalar Soni\n";
+                salesData.sales_trend.forEach(s => {
+                    csvContent += `"${s.label}",${s.collected},${s.contracts_count}\n`;
+                });
+            } else if (activeTab === 'leads' && leadsData?.leads_by_operator) {
+                csvContent += "Operator,Jami Leadlar,Konvertatsiya Qilingan,Konversiya %\n";
+                leadsData.leads_by_operator.forEach(op => {
+                    csvContent += `"${op.operator_name}",${op.count},${op.converted},${op.conversion_rate}%\n`;
+                });
+            } else if (activeTab === 'marketing' && marketingData?.channel_roi) {
+                csvContent += "Kanal,Mijozlar Soni,O'quvchilar Soni,Tushum\n";
+                marketingData.channel_roi.forEach(c => {
+                    csvContent += `"${c.name}",${c.clients_count},${c.students_count},${c.revenue}\n`;
+                });
+            } else {
+                toast.info("Eksport qilish uchun ma'lumotlar mavjud emas");
+                return;
+            }
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toast.success("Hisobot CSV formatida yuklab olindi");
+        } catch (e) {
+            console.error("Export error:", e);
+            toast.error("Eksportda xatolik yuz berdi");
         }
-        const root = Root.new(el);
-        el._amchartsRoot = root;
-        root.setThemes([
-            am5themes_Animated.new(root),
-            am5themes_Dark.new(root)
-        ]);
-        // Remove amCharts trademark if allowed/needed
-        if (root._logo) root._logo.dispose();
-        return root;
     };
-
-    // 1. Daily Leads Trend (Area Chart)
-    useLayoutEffect(() => {
-        if (!data?.daily_leads || data.daily_leads.length === 0 || loading) return;
-        if (!document.getElementById("trend-chart-div")) return;
-
-        let root = createRoot("trend-chart-div");
-        if (!root) return;
-        let chart = root.container.children.push(XYChart.new(root, {
-            panX: true,
-            panY: true,
-            wheelX: "panX",
-            wheelY: "zoomX",
-            pinchZoomX: true
-        }));
-
-        let xAxis = chart.xAxes.push(DateAxis.new(root, {
-            maxDeviation: 0.1,
-            baseInterval: { timeUnit: "day", count: 1 },
-            renderer: AxisRendererX.new(root, {
-                minGridDistance: 50
-            }),
-            tooltip: Tooltip.new(root, {})
-        }));
-
-        let yAxis = chart.yAxes.push(ValueAxis.new(root, {
-            renderer: AxisRendererY.new(root, {})
-        }));
-
-        let series = chart.series.push(LineSeries.new(root, {
-            name: "Leadlar",
-            xAxis: xAxis,
-            yAxis: yAxis,
-            valueYField: "count",
-            valueXField: "date",
-            tooltip: Tooltip.new(root, {
-                labelText: "{valueY} ta lead"
-            }),
-            fill: color(0x6366f1),
-            stroke: color(0x6366f1)
-        }));
-
-        series.fills.template.setAll({
-            fillOpacity: 0.2,
-            visible: true
-        });
-
-        series.data.setAll(data.daily_leads.map(item => ({
-            date: new Date(item.date).getTime(),
-            count: item.count
-        })));
-
-        series.appear(1000);
-        chart.appear(1000, 100);
-
-        return () => root.dispose();
-    }, [data?.daily_leads, loading, activeTab]);
-
-    // 2. Stage Distribution (Funnel Chart)
-    useLayoutEffect(() => {
-        if (!data?.stage_distribution || data.stage_distribution.length === 0 || loading) return;
-        if (!document.getElementById("stage-chart-div")) return;
-
-        let root = createRoot("stage-chart-div");
-        if (!root) return;
-        let chart = root.container.children.push(SlicedChart.new(root, {
-            layout: root.verticalLayout,
-            paddingRight: 200
-        }));
-
-        let series = chart.series.push(FunnelSeries.new(root, {
-            alignLabels: true,
-            orientation: "vertical",
-            valueField: "_size",
-            categoryField: "stage_name",
-            bottomRatio: 1
-        }));
-
-        series.slices.template.setAll({
-            strokeOpacity: 0.2,
-            stroke: color(0x1a1a2e),
-            strokeWidth: 2,
-            fillOpacity: 0.92
-        });
-
-        series.slices.template.adapters.add("fill", (fill, target) => {
-            const dataItem = target.dataItem.dataContext;
-            return color(dataItem.stage_color || 0x6366f1);
-        });
-
-        // Show real count in labels via adapter
-        series.labels.template.setAll({
-            fontSize: 11,
-            fill: color(0xffffff),
-            oversizedBehavior: "truncate",
-            maxWidth: 190,
-            paddingLeft: 10
-        });
-        series.labels.template.adapters.add("text", (text, target) => {
-            const ctx = target.dataItem?.dataContext;
-            return ctx ? `${ctx.stage_name}: [bold]${ctx.real_count}[/]` : text;
-        });
-
-        series.ticks.template.setAll({
-            stroke: color(0xffffff),
-            strokeOpacity: 0.3,
-            strokeDasharray: [4, 3],
-            strokeWidth: 1
-        });
-
-        series.links.template.setAll({
-            fill: color(0x1e293b),
-            fillOpacity: 1,
-            height: 5
-        });
-
-        const excludedStages = ["Ko'tarmadi", "Ko\`tarmadi", "Xato raqamlar", "Yangi leadlar"];
-        const baseFilteredData = data.stage_distribution.filter(st => !excludedStages.includes(st.stage_name));
-        const totalLeads = data?.conversion_stats?.total || data.stage_distribution.reduce((acc, curr) => acc + curr.count, 0);
-
-        const rawData = [
-            { stage_name: "Jami leads", count: totalLeads, stage_color: "#6366f1" },
-            ...baseFilteredData
-        ];
-
-        // Normalize: squared decay for smooth tapering sides like reference photo
-        const normalizedData = rawData.map((item, i) => ({
-            ...item,
-            real_count: item.count,
-            _size: Math.pow(rawData.length - i, 2) + 2
-        }));
-
-        series.data.setAll(normalizedData);
-
-        // Legend showing real counts
-        let legend = chart.children.push(Legend.new(root, {
-            centerX: percent(50),
-            x: percent(50),
-            marginTop: 15,
-            marginBottom: 15,
-            layout: root.gridLayout
-        }));
-        legend.labels.template.adapters.add("text", (text, target) => {
-            const ctx = target.dataItem?.dataItem?.dataContext;
-            return ctx ? ctx.stage_name : text;
-        });
-        legend.valueLabels.template.adapters.add("text", (text, target) => {
-            const ctx = target.dataItem?.dataItem?.dataContext;
-            return ctx ? `${ctx.real_count}` : text;
-        });
-        legend.data.setAll(series.dataItems);
-
-        series.appear();
-        chart.appear(1000, 100);
-
-        return () => root.dispose();
-    }, [data?.stage_distribution, loading, activeTab]);
-
-    // 3. Call Status (Pie Chart)
-    useLayoutEffect(() => {
-        if (!data?.call_status_distribution || data.call_status_distribution.length === 0 || loading) return;
-        if (!document.getElementById("call-status-chart-div")) return;
-
-        let root = createRoot("call-status-chart-div");
-        if (!root) return;
-        let chart = root.container.children.push(PieChart.new(root, {
-            layout: root.verticalLayout,
-            innerRadius: percent(50)
-        }));
-
-        let series = chart.series.push(PieSeries.new(root, {
-            valueField: "value",
-            categoryField: "name",
-            alignLabels: false
-        }));
-
-        series.labels.template.setAll({
-            forceHidden: true
-        });
-
-        series.slices.template.adapters.add("fill", (fill, target) => {
-            const dataItem = target.dataItem.dataContext;
-            return color(dataItem.color || 0x6366f1);
-        });
-
-        series.data.setAll(data.call_status_distribution);
-
-        let legend = chart.children.push(Legend.new(root, {
-            centerX: percent(50),
-            x: percent(50),
-            marginTop: 15,
-            marginBottom: 15
-        }));
-        legend.data.setAll(series.dataItems);
-
-        series.appear(1000, 100);
-
-        return () => root.dispose();
-    }, [data?.call_status_distribution, loading, activeTab]);
-
-    // 4. Operator Performance (Funnel Chart)
-    useLayoutEffect(() => {
-        if (!data?.leads_by_operator?.length || loading) return;
-        const el = document.getElementById("op-performance-chart-div");
-        if (!el) return;
-
-        let root = createRoot("op-performance-chart-div");
-        if (!root) return;
-        let chart = root.container.children.push(SlicedChart.new(root, {
-            layout: root.verticalLayout,
-            paddingRight: 200
-        }));
-
-        let series = chart.series.push(FunnelSeries.new(root, {
-            alignLabels: true,
-            orientation: "vertical",
-            valueField: "_size",
-            categoryField: "operator_name",
-            bottomRatio: 1
-        }));
-
-        series.slices.template.setAll({
-            strokeOpacity: 0.2,
-            stroke: color(0x1a1a2e),
-            strokeWidth: 2,
-            fillOpacity: 0.92
-        });
-
-        series.labels.template.setAll({
-            fontSize: 11,
-            fill: color(0xffffff),
-            oversizedBehavior: "truncate",
-            maxWidth: 190,
-            paddingLeft: 10
-        });
-        series.labels.template.adapters.add("text", (text, target) => {
-            const ctx = target.dataItem?.dataContext;
-            return ctx ? `${ctx.operator_name}: [bold]${ctx.real_count}[/]` : text;
-        });
-
-        series.ticks.template.setAll({
-            stroke: color(0xffffff),
-            strokeOpacity: 0.3,
-            strokeDasharray: [4, 3],
-            strokeWidth: 1
-        });
-
-        series.links.template.setAll({
-            fill: color(0x1e293b),
-            fillOpacity: 1,
-            height: 5
-        });
-
-        // Normalize data for even visual distribution
-        const normalizedOps = data.leads_by_operator.map((item, i) => ({
-            ...item,
-            real_count: item.count,
-            _size: Math.pow(data.leads_by_operator.length - i, 2) + 2
-        }));
-
-        series.data.setAll(normalizedOps);
-
-        series.slices.template.events.on("click", (ev) => {
-            const op = ev.target.dataItem.dataContext;
-            setSelectedOperator(prev => prev?.operator_id === op.operator_id ? null : op);
-        });
-
-        series.appear();
-        chart.appear(1000, 100);
-
-        return () => root.dispose();
-    }, [data?.leads_by_operator, loading, activeTab]);
-
-    // 5. Selected Operator Detail Funnel
-    useLayoutEffect(() => {
-        if (!selectedOperator?.stages || selectedOperator.stages.length === 0) return;
-        const el = document.getElementById("detail-funnel-chart-div");
-        if (!el) return;
-        
-        const excludedStages = ["Ko'tarmadi", "Ko\`tarmadi", "Xato raqamlar", "Yangi leadlar"];
-        const baseFilteredData = selectedOperator.stages.filter(st =>
-            !hiddenStages.includes(st.stage_name) && !excludedStages.includes(st.stage_name)
-        );
-
-        const rawData = [
-            { stage_name: "Jami leads", count: selectedOperator.count || 0, stage_color: "#6366f1" },
-            ...baseFilteredData
-        ];
-
-        // Normalize for even visual distribution
-        const normalizedData = rawData.map((item, i) => ({
-            ...item,
-            real_count: item.count,
-            _size: Math.pow(rawData.length - i, 2) + 2
-        }));
-
-        let root = createRoot("detail-funnel-chart-div");
-        if (!root) return;
-        let chart = root.container.children.push(SlicedChart.new(root, {
-            layout: root.verticalLayout,
-            paddingRight: 180
-        }));
-
-        let series = chart.series.push(FunnelSeries.new(root, {
-            alignLabels: true,
-            orientation: "vertical",
-            valueField: "_size",
-            categoryField: "stage_name",
-            bottomRatio: 1
-        }));
-
-        series.slices.template.setAll({
-            strokeOpacity: 0.2,
-            stroke: color(0x1a1a2e),
-            strokeWidth: 2,
-            fillOpacity: 0.92
-        });
-
-        series.slices.template.adapters.add("fill", (fill, target) => {
-            const dataItem = target.dataItem.dataContext;
-            return color(dataItem.stage_color || 0x6366f1);
-        });
-
-        series.labels.template.setAll({
-            fontSize: 10,
-            fill: color(0xffffff),
-            oversizedBehavior: "truncate",
-            maxWidth: 170,
-            paddingLeft: 8
-        });
-        series.labels.template.adapters.add("text", (text, target) => {
-            const ctx = target.dataItem?.dataContext;
-            return ctx ? `${ctx.stage_name}: [bold]${ctx.real_count}[/]` : text;
-        });
-
-        series.ticks.template.setAll({
-            stroke: color(0xffffff),
-            strokeOpacity: 0.3,
-            strokeDasharray: [4, 3],
-            strokeWidth: 1
-        });
-
-        series.links.template.setAll({
-            fill: color(0x1e293b),
-            fillOpacity: 1,
-            height: 5
-        });
-
-        series.data.setAll(normalizedData);
-
-        series.appear();
-        chart.appear(1000, 100);
-
-        return () => root.dispose();
-    }, [selectedOperator, hiddenStages, activeTab]);
-
-    // 6. Source Distribution (Pie Chart)
-    useLayoutEffect(() => {
-        if (!data?.source_distribution || data.source_distribution.length === 0 || loading) return;
-        if (!document.getElementById("source-chart-div")) return;
-
-        let root = createRoot("source-chart-div");
-        if (!root) return;
-        let chart = root.container.children.push(PieChart.new(root, {
-            layout: root.verticalLayout
-        }));
-
-        let series = chart.series.push(PieSeries.new(root, {
-            valueField: "count",
-            categoryField: "source",
-            alignLabels: false
-        }));
-
-        series.labels.template.setAll({
-            forceHidden: true
-        });
-
-        series.data.setAll(data.source_distribution);
-
-        let legend = chart.children.push(Legend.new(root, {
-            centerX: percent(50),
-            x: percent(50),
-            marginTop: 15,
-            marginBottom: 15
-        }));
-        legend.data.setAll(series.dataItems);
-
-        series.appear(1000, 100);
-
-        return () => root.dispose();
-    }, [data?.source_distribution, loading, activeTab]);
-
-    // 7. Formalar Bar Chart
-    useLayoutEffect(() => {
-        if (!formalarData?.operators || formalarData.operators.length === 0 || loading) return;
-        if (!document.getElementById("formalar-chart-div")) return;
-
-        let root = createRoot("formalar-chart-div");
-        if (!root) return;
-        let chart = root.container.children.push(XYChart.new(root, {
-            panX: false,
-            panY: false,
-            layout: root.verticalLayout
-        }));
-
-        let xAxis = chart.xAxes.push(CategoryAxis.new(root, {
-            categoryField: "operator_name",
-            renderer: AxisRendererX.new(root, {
-                minGridDistance: 30
-            })
-        }));
-
-        xAxis.data.setAll(formalarData.operators);
-
-        let yAxis = chart.yAxes.push(ValueAxis.new(root, {
-            renderer: AxisRendererY.new(root, {})
-        }));
-
-        let series = chart.series.push(ColumnSeries.new(root, {
-            name: "Ko'chirilgan leadlar",
-            xAxis: xAxis,
-            yAxis: yAxis,
-            valueYField: "moved_count",
-            categoryXField: "operator_name",
-            tooltip: Tooltip.new(root, {
-                labelText: "{valueY} ta lead"
-            })
-        }));
-
-        series.columns.template.setAll({
-            cornerRadiusTL: 5,
-            cornerRadiusTR: 5,
-            strokeOpacity: 0,
-            fillOpacity: 0.8
-        });
-
-        series.columns.template.set("fill", color(0x6366f1));
-
-        series.data.setAll(formalarData.operators);
-        series.appear();
-        chart.appear(1000, 100);
-
-        return () => root.dispose();
-    }, [formalarData?.operators, loading, activeTab]);
-
-    // 8. Marketing Lead Distribution (Donut Chart)
-    useLayoutEffect(() => {
-        if (!marketingData || marketingData.length === 0 || loading || activeTab !== 'marketing') return;
-        if (!document.getElementById("marketing-lead-chart-div")) return;
-
-        let root = createRoot("marketing-lead-chart-div");
-        if (!root) return;
-        let chart = root.container.children.push(PieChart.new(root, {
-            innerRadius: percent(60)
-        }));
-
-        let series = chart.series.push(PieSeries.new(root, {
-            valueField: "leads_count",
-            categoryField: "name",
-            alignLabels: false
-        }));
-
-        series.labels.template.setAll({
-            forceHidden: true
-        });
-
-        series.data.setAll(marketingData);
-
-        let legend = chart.children.push(Legend.new(root, {
-            centerX: percent(50),
-            x: percent(50),
-            marginTop: 15,
-            marginBottom: 15,
-            layout: root.gridLayout
-        }));
-        legend.data.setAll(series.dataItems);
-
-        series.appear(1000, 100);
-        chart.appear(1000, 100);
-
-        return () => root.dispose();
-    }, [marketingData, loading, activeTab]);
-
-    // 9. Marketing Performance Comparison (Bar Chart)
-    useLayoutEffect(() => {
-        if (!marketingData || marketingData.length === 0 || loading || activeTab !== 'marketing') return;
-        if (!document.getElementById("marketing-perf-chart-div")) return;
-
-        let root = createRoot("marketing-perf-chart-div");
-        if (!root) return;
-        let chart = root.container.children.push(XYChart.new(root, {
-            panX: false,
-            panY: false,
-            wheelX: "none",
-            wheelY: "none",
-            layout: root.verticalLayout
-        }));
-
-        let xRenderer = AxisRendererX.new(root, { minGridDistance: 30 });
-        let xAxis = chart.xAxes.push(CategoryAxis.new(root, {
-            categoryField: "name",
-            renderer: xRenderer,
-            tooltip: Tooltip.new(root, {})
-        }));
-
-        xAxis.data.setAll(marketingData);
-
-        let yAxis = chart.yAxes.push(ValueAxis.new(root, {
-            renderer: AxisRendererY.new(root, {})
-        }));
-
-        let series = chart.series.push(ColumnSeries.new(root, {
-            name: "Leadlar",
-            xAxis: xAxis,
-            yAxis: yAxis,
-            valueYField: "leads_count",
-            categoryXField: "name",
-            tooltip: Tooltip.new(root, {
-                labelText: "{valueY} ta lead"
-            })
-        }));
-
-        series.columns.template.setAll({
-            cornerRadiusTL: 10,
-            cornerRadiusTR: 10,
-            fillOpacity: 0.8,
-            strokeOpacity: 0
-        });
-
-        series.columns.template.adapters.add("fill", (fill, target) => {
-            return chart.get("colors").getIndex(series.columns.indexOf(target));
-        });
-
-        series.data.setAll(marketingData);
-        series.appear(1000);
-        chart.appear(1000, 100);
-
-        return () => root.dispose();
-    }, [marketingData, loading, activeTab]);
-
-    if (loading && !data) {
-        return (
-            <div className="analytics-page loading-state">
-                <div className="spinner"></div>
-                <p>Ma'lumotlar yuklanmoqda...</p>
-            </div>
-        );
-    }
 
     return (
         <div className="analytics-page animate-fadeIn">
+            {/* Top Navigation & Header */}
             <div className="analytics-header">
                 <div className="header-left">
+                    <UITooltip text="BI (Business Intelligence) tahlil va boshqaruv tizimi" position="bottom">
+                        <div className="analytics-badge">
+                            <Sparkles size={14} />
+                            <span>BI & Chuqur Tahlillar</span>
+                        </div>
+                    </UITooltip>
                     <h1>Analitika va Hisobotlar</h1>
-                    <p>KPI ko'rsatkichlari va savdo dinamikasi</p>
+                    <p>O'quvchilar kontingenti, sotuv, leadlar voronkasi va marketing natijadorligi</p>
                 </div>
-                <div className="header-right">
-                    <div className="header-actions">
-                        <div className="header-tabs">
-                            <button
-                                className={`tab-btn ${activeTab === 'leads' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('leads')}
-                            >
-                                Leadlar
-                            </button>
-                            <button
-                                className={`tab-btn ${activeTab === 'marketing' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('marketing')}
-                            >
-                                Marketing
-                            </button>
-                        </div>
-                        <div style={{
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                            background: 'var(--bg-secondary)', padding: '6px 12px',
-                            borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)'
-                        }}>
-                            <Calendar size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
-                            <input
-                                type="text"
-                                placeholder="KK.OO.YYYY"
-                                value={filters.start_date ? (filters.start_date.includes('-') ? formatApiDateToUI(filters.start_date) : filters.start_date) : ''}
-                                onChange={(e) => setFilters(prev => ({ ...prev, start_date: formatDateInput(e.target.value) }))}
-                                style={{
-                                    background: 'transparent', border: 'none', color: 'var(--text-primary)',
-                                    fontSize: '13px', fontWeight: 600, outline: 'none', width: '100px'
-                                }}
-                            />
-                            <span style={{ color: 'var(--text-tertiary)', fontSize: '12px' }}>—</span>
-                            <input
-                                type="text"
-                                placeholder="KK.OO.YYYY"
-                                value={filters.end_date ? (filters.end_date.includes('-') ? formatApiDateToUI(filters.end_date) : filters.end_date) : ''}
-                                onChange={(e) => setFilters(prev => ({ ...prev, end_date: formatDateInput(e.target.value) }))}
-                                style={{
-                                    background: 'transparent', border: 'none', color: 'var(--text-primary)',
-                                    fontSize: '13px', fontWeight: 600, outline: 'none', width: '100px'
-                                }}
-                            />
-                        </div>
-                        <button className={`btn-filter-trigger ${filterOpen ? 'active' : ''}`} onClick={() => setFilterOpen(true)}>
-                            <Filter size={18} />
-                            <span>Filterlash</span>
+
+                <div className="header-actions">
+                    <UITooltip text="Ma'lumotlarni qayta yuklash" position="bottom">
+                        <button className="btn-v2 btn-v2-dark" onClick={() => fetchTabData(activeTab, filters)}>
+                            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+                            <span>Yangilash</span>
                         </button>
-                    </div>
-                </div>
-            </div>
+                    </UITooltip>
 
-            {activeTab === 'leads' && (
-                <>
-            {/* KPI Cards */}
-            <div className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '24px' }}>
-                <div className="kpi-card" style={{ background: 'var(--bg-secondary)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Jami Leadlar</span>
-                        <div style={{ background: 'rgba(99, 102, 241, 0.1)', padding: '8px', borderRadius: '8px', color: '#6366f1' }}>
-                            <Users size={20} />
-                        </div>
-                    </div>
-                    <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--text-primary)' }}>
-                        {data?.conversion_stats?.total || 0}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#10b981', marginTop: '5px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <ArrowUpRight size={14} /> Tanlangan davrda
-                    </div>
-                </div>
-
-                <div className="kpi-card" style={{ background: 'var(--bg-secondary)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Faol Leadlar</span>
-                        <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '8px', borderRadius: '8px', color: '#f59e0b' }}>
-                            <Clock size={20} />
-                        </div>
-                    </div>
-                    <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--text-primary)' }}>
-                        {data?.conversion_stats?.active || 0}
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', marginTop: '5px' }}>
-                        Ishlov jarayonida
-                    </div>
-                </div>
-
-                <div className="kpi-card" style={{ background: 'var(--bg-secondary)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Konversiya</span>
-                        <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '8px', borderRadius: '8px', color: '#10b981' }}>
-                            <CheckCircle size={20} />
-                        </div>
-                    </div>
-                    <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--text-primary)' }}>
-                        {data?.conversion_stats?.converted || 0}
-                    </div>
-                    <div style={{ fontSize: '12px', color: '#10b981', marginTop: '5px' }}>
-                        {data?.conversion_stats?.rate}% muvaffaqiyat
-                    </div>
-                </div>
-
-                <div className="kpi-card" style={{ background: 'var(--bg-secondary)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Follow-up</span>
-                        <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '8px', borderRadius: '8px', color: '#ef4444' }}>
-                            <Clock size={20} />
-                        </div>
-                    </div>
-                    <div style={{ fontSize: '28px', fontWeight: '700', color: 'var(--text-primary)' }}>
-                        {data?.conversion_stats?.follow_up_total || 0}
-                    </div>
-                    <div style={{ fontSize: '12px', color: data?.conversion_stats?.follow_up_overdue > 0 ? '#ef4444' : 'var(--text-tertiary)', marginTop: '5px' }}>
-                        {data?.conversion_stats?.follow_up_overdue || 0} ta muddati o'tgan
-                    </div>
-                </div>
-            </div>
-
-            <div className="charts-grid">
-                {/* Daily Leads Trend */}
-                <div className="chart-card wide">
-                    <div className="chart-card-header">
-                        <span className="chart-number">Trend</span>
-                        <h4>Kunlik Leadlar Dinamikasi</h4>
-                    </div>
-                    <div className="chart-body" style={{ height: '350px' }}>
-                        {!data?.daily_leads || data.daily_leads.length === 0 ? (
-                            <div className="chart-no-data">Ma'lumot topilmadi</div>
-                        ) : (
-                            <div id="trend-chart-div" style={{ width: '100%', height: '100%' }}></div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Stage Distribution */}
-                <div className="chart-card">
-                    <div className="chart-card-header">
-                        <span className="chart-number">Voronka</span>
-                        <h4>Bosqichlar bo'yicha</h4>
-                    </div>
-                    <div className="chart-body" style={{ height: '550px' }}>
-                        {!data?.stage_distribution || data.stage_distribution.length === 0 ? (
-                            <div className="chart-no-data">Ma'lumot topilmadi</div>
-                        ) : (
-                            <div id="stage-chart-div" style={{ width: '100%', height: '100%' }}></div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Call Status */}
-                <div className="chart-card">
-                    <div className="chart-card-header">
-                        <span className="chart-number">Qo'ng'iroqlar</span>
-                        <h4>Aloqa Sifati</h4>
-                    </div>
-                    <div className="chart-body" style={{ height: '350px' }}>
-                        {!data?.call_status_distribution || data.call_status_distribution.length === 0 ? (
-                            <div className="chart-no-data">Ma'lumot topilmadi</div>
-                        ) : (
-                            <div id="call-status-chart-div" style={{ width: '100%', height: '100%' }}></div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Operator Performance - Funnel with Inline Detail */}
-                <div className="chart-card wide">
-                    <div className="chart-card-header">
-                        <span className="chart-number">Voronka</span>
-                        <h4>Operatorlar Samaradorligi</h4>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0', minHeight: '450px' }}>
-                        {/* Left: Main Funnel */}
-                        <div style={{
-                            flex: selectedOperator ? '0 0 50%' : '1',
-                            transition: 'flex 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                            padding: '16px',
-                            borderRight: selectedOperator ? '1px solid var(--border-color)' : 'none'
-                        }}>
-                            <div style={{ height: '400px', position: 'relative' }}>
-                                {!data?.leads_by_operator || data.leads_by_operator.length === 0 ? (
-                                    <div className="chart-no-data">Ma'lumot topilmadi</div>
-                                ) : (
-                                    <div id="op-performance-chart-div" style={{ width: '100%', height: '100%' }}></div>
-                                )}
-                            </div>
-                            {/* Operator list pills */}
-                            {data?.leads_by_operator?.length > 0 && (
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '0 4px', marginTop: '8px' }}>
-                                    {data.leads_by_operator.map((op, i) => (
-                                        <button
-                                            key={op.operator_id}
-                                            onClick={() => setSelectedOperator(
-                                                selectedOperator?.operator_id === op.operator_id ? null : op
-                                            )}
-                                            style={{
-                                                display: 'inline-flex', alignItems: 'center', gap: '6px',
-                                                padding: '5px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: 600,
-                                                background: selectedOperator?.operator_id === op.operator_id
-                                                    ? `rgba(99, 102, 241, 0.15)`
-                                                    : 'rgba(255,255,255,0.04)',
-                                                color: selectedOperator?.operator_id === op.operator_id
-                                                    ? '#818cf8'
-                                                    : 'var(--text-secondary)',
-                                                border: selectedOperator?.operator_id === op.operator_id
-                                                    ? `1px solid rgba(99, 102, 241, 0.3)`
-                                                    : '1px solid var(--border-color)',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s ease'
-                                            }}
-                                        >
-                                            <span style={{
-                                                width: '8px', height: '8px', borderRadius: '50%',
-                                                background: '#6366f1'
-                                            }} />
-                                            {op.operator_name}
-                                        </button>
-                                    ))}
-                                </div>
+                    <UITooltip text="Filtrlash parametrlarini ochish" position="bottom">
+                        <button className="btn-v2 btn-v2-dark" onClick={() => setFilterOpen(true)}>
+                            <Filter size={16} />
+                            <span>Filtrlar</span>
+                            {(filters.school_class || filters.gender || filters.operator || filters.stage) && (
+                                <span className="active-filter-indicator"></span>
                             )}
-                        </div>
+                        </button>
+                    </UITooltip>
 
-                        {/* Right: Selected Operator Funnel Detail */}
-                        <div className={`operator-inline-panel ${selectedOperator ? 'open' : ''}`}>
-                            {selectedOperator && (
-                                <div className="operator-inline-content">
-                                    {/* Header */}
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <div style={{
-                                                width: '40px', height: '40px', borderRadius: '10px',
-                                                background: 'linear-gradient(135deg, #6366f122, #6366f144)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                color: '#6366f1', fontWeight: 700, fontSize: '15px'
-                                            }}>
-                                                {selectedOperator.operator_name?.charAt(0)?.toUpperCase()}
+                    <UITooltip text="Jadval ma'lumotlarini CSV faylida yuklab olish" position="bottom">
+                        <button className="btn-v2 btn-v2-primary" onClick={handleExportCSV}>
+                            <Download size={16} />
+                            <span>Eksport CSV</span>
+                        </button>
+                    </UITooltip>
+                </div>
+            </div>
+
+            {/* Modern Tab Selector */}
+            <div className="analytics-tabs-container">
+                <div className="analytics-tabs">
+                    {TABS.map(tab => {
+                        const Icon = tab.icon;
+                        const isActive = activeTab === tab.id;
+                        return (
+                            <button
+                                key={tab.id}
+                                className={`analytics-tab-btn ${isActive ? 'active' : ''}`}
+                                onClick={() => setActiveTab(tab.id)}
+                            >
+                                <Icon size={18} />
+                                <span>{tab.label}</span>
+                                {isActive && <div className="tab-indicator" />}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Tab Contents */}
+            {loading ? (
+                <div className="analytics-loading-state">
+                    <div className="loading-spinner"></div>
+                    <p>Ma'lumotlar tahlil qilinmoqda...</p>
+                </div>
+            ) : (
+                <div className="analytics-content-body">
+                    {/* 1. STUDENTS TAB */}
+                    {activeTab === 'students' && (
+                        studentsData ? (
+                            <div className="tab-view-container animate-slideUp">
+                                {/* KPI Cards Grid */}
+                                <div className="kpi-grid">
+                                    <UITooltip text="Maktabda ro'yxatdan o'tgan faol o'quvchilar soni" position="top" className="w-full">
+                                        <div className="kpi-card glass-card" style={{ width: '100%' }}>
+                                            <div className="kpi-icon-wrapper primary">
+                                                <GraduationCap size={22} />
                                             </div>
+                                            <div className="kpi-info">
+                                                <span className="kpi-label">Faol O'quvchilar</span>
+                                                <h3 className="kpi-value">{studentsData.kpi.active_students} <small>/ {studentsData.kpi.total_students}</small></h3>
+                                                <span className="kpi-trend positive">
+                                                    <ArrowUpRight size={14} /> Jami kontingent
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </UITooltip>
+
+                                    <UITooltip text="Tanlangan sana oralig'ida qabul qilingan o'quvchilar" position="top" className="w-full">
+                                        <div className="kpi-card glass-card" style={{ width: '100%' }}>
+                                            <div className="kpi-icon-wrapper success">
+                                                <TrendingUp size={22} />
+                                            </div>
+                                            <div className="kpi-info">
+                                                <span className="kpi-label">Yangi Qabul Qilinganlar</span>
+                                                <h3 className="kpi-value">{studentsData.kpi.new_students_period}</h3>
+                                                <span className="kpi-trend neutral">Tanlangan davrda</span>
+                                            </div>
+                                        </div>
+                                    </UITooltip>
+
+                                    <UITooltip text="Mavjud sinflar sig'imining to'lganlik darajasi" position="top" className="w-full">
+                                        <div className="kpi-card glass-card" style={{ width: '100%' }}>
+                                            <div className="kpi-icon-wrapper info">
+                                                <Building2 size={22} />
+                                            </div>
+                                            <div className="kpi-info">
+                                                <span className="kpi-label">Sinflar Sig'imi (To'lganlik)</span>
+                                                <h3 className="kpi-value">{studentsData.kpi.capacity_utilization}%</h3>
+                                                <span className="kpi-trend info">
+                                                    Jami {studentsData.kpi.total_capacity} o'rin
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </UITooltip>
+
+                                    <UITooltip text="Shartnoma to'lovi to'liq to'lanmagan o'quvchilar" position="top" className="w-full">
+                                        <div className="kpi-card glass-card" style={{ width: '100%' }}>
+                                            <div className="kpi-icon-wrapper warning">
+                                                <AlertCircle size={22} />
+                                            </div>
+                                            <div className="kpi-info">
+                                                <span className="kpi-label">Qarzdor O'quvchilar</span>
+                                                <h3 className="kpi-value">{studentsData.kpi.debtor_count}</h3>
+                                                <span className="kpi-trend negative">Faol shartnomalarda</span>
+                                            </div>
+                                        </div>
+                                    </UITooltip>
+
+                                    <UITooltip text="O'qishni to'xtatgan yoki chetlatilgan o'quvchilar" position="top" className="w-full">
+                                        <div className="kpi-card glass-card" style={{ width: '100%' }}>
+                                            <div className="kpi-icon-wrapper danger">
+                                                <UserX size={22} />
+                                            </div>
+                                            <div className="kpi-info">
+                                                <span className="kpi-label">Chiqib Ketgan / Nofaol</span>
+                                                <h3 className="kpi-value">{studentsData.kpi.left_students}</h3>
+                                                <span className="kpi-trend neutral">Bitirganlar: {studentsData.kpi.graduated_students}</span>
+                                            </div>
+                                        </div>
+                                    </UITooltip>
+                                </div>
+
+                                {/* Charts Row 1: Growth & Class Capacity */}
+                                <div className="charts-grid-2col">
+                                    <div className="chart-card glass-card">
+                                        <div className="chart-header">
                                             <div>
-                                                <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>
-                                                    {selectedOperator.operator_name}
+                                                <h3 className="chart-title">O'quvchilar O'sish Dinamikasi</h3>
+                                                <p className="chart-subtitle">Oylar kesimida yangi qo'shilgan o'quvchilar</p>
+                                            </div>
+                                            <InfoTooltip text="Oylar bo'yicha qabul qilingan yangi o'quvchilar sonining o'sish tendentsiyasi" />
+                                        </div>
+                                        <div className="chart-body" style={{ height: '320px' }}>
+                                            {studentsData.growth_trend?.length > 0 ? (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <AreaChart data={studentsData.growth_trend} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                                                        <defs>
+                                                            <linearGradient id="studentGrowthGrad" x1="0" y1="0" x2="0" y2="1">
+                                                                <stop offset="5%" stopColor="#6366f1" stopOpacity={0.4} />
+                                                                <stop offset="95%" stopColor="#6366f1" stopOpacity={0.0} />
+                                                            </linearGradient>
+                                                        </defs>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} opacity={0.5} />
+                                                        <XAxis dataKey="month_name" stroke="var(--text-tertiary)" fontSize={12} tickLine={false} />
+                                                        <YAxis stroke="var(--text-tertiary)" fontSize={12} tickLine={false} axisLine={false} />
+                                                        <Tooltip content={<CustomChartTooltip valueSuffix=" nafar" />} />
+                                                        <Area type="monotone" dataKey="enrolled" name="Yangi o'quvchilar" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#studentGrowthGrad)" />
+                                                    </AreaChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <div className="chart-empty-state">
+                                                    <Inbox size={30} />
+                                                    <span>Ma'lumot topilmadi</span>
                                                 </div>
-                                                <div style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                                                    Voronka statistikasi
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="chart-card glass-card">
+                                        <div className="chart-header">
+                                            <div>
+                                                <h3 className="chart-title">Sinflar To'lganlik Darajasi</h3>
+                                                <p className="chart-subtitle">Faol o'quvchilar soni va sinf sig'imi (Top sinflar)</p>
+                                            </div>
+                                            <InfoTooltip text="Sinflardagi mavjud o'quvchilar soni va umumiy xona sig'imi taqqosi" />
+                                        </div>
+                                        <div className="chart-body" style={{ height: '320px' }}>
+                                            {studentsData.classes_breakdown?.length > 0 ? (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={studentsData.classes_breakdown.slice(0, 8)} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} opacity={0.5} />
+                                                        <XAxis dataKey="name" stroke="var(--text-tertiary)" fontSize={12} tickLine={false} />
+                                                        <YAxis stroke="var(--text-tertiary)" fontSize={12} tickLine={false} axisLine={false} />
+                                                        <Tooltip content={<CustomChartTooltip valueSuffix=" o'quvchi" />} />
+                                                        <Legend />
+                                                        <Bar dataKey="student_count" name="Mavjud o'quvchi" fill="#10b981" radius={[6, 6, 0, 0]} />
+                                                        <Bar dataKey="capacity" name="Sig'im" fill="rgba(99, 102, 241, 0.3)" radius={[6, 6, 0, 0]} />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <div className="chart-empty-state">
+                                                    <Inbox size={30} />
+                                                    <span>Sinflar ma'lumoti topilmadi</span>
                                                 </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Charts Row 2: Gender, Age & Status */}
+                                <div className="charts-grid-3col">
+                                    <div className="chart-card glass-card">
+                                        <div className="chart-header">
+                                            <h3 className="chart-title">Gender Taqsimoti</h3>
+                                            <InfoTooltip text="O'g'il va qiz bolalar soni hamda ulushi nisbati" />
+                                        </div>
+                                        <div className="chart-body" style={{ height: '240px' }}>
+                                            {studentsData.gender_breakdown?.length > 0 ? (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={studentsData.gender_breakdown}
+                                                            dataKey="value"
+                                                            nameKey="name"
+                                                            cx="50%"
+                                                            cy="50%"
+                                                            innerRadius={55}
+                                                            outerRadius={80}
+                                                            paddingAngle={5}
+                                                        >
+                                                            {studentsData.gender_breakdown.map((entry, index) => (
+                                                                <Cell key={`gender-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
+                                                            ))}
+                                                        </Pie>
+                                                        <Tooltip content={<CustomChartTooltip valueSuffix=" nafar" />} />
+                                                        <Legend />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <div className="chart-empty-state">
+                                                    <Inbox size={26} />
+                                                    <span>Ma'lumot topilmadi</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="chart-card glass-card">
+                                        <div className="chart-header">
+                                            <h3 className="chart-title">Yosh Guruhlari</h3>
+                                            <InfoTooltip text="O'quvchilarning yosh toifalari (7-18+ yosh) bo'yicha taqsimoti" />
+                                        </div>
+                                        <div className="chart-body" style={{ height: '240px' }}>
+                                            {studentsData.age_breakdown?.length > 0 ? (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={studentsData.age_breakdown} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} opacity={0.5} />
+                                                        <XAxis dataKey="name" stroke="var(--text-tertiary)" fontSize={10} tickLine={false} />
+                                                        <YAxis stroke="var(--text-tertiary)" fontSize={10} tickLine={false} axisLine={false} />
+                                                        <Tooltip content={<CustomChartTooltip valueSuffix=" nafar" />} />
+                                                        <Bar dataKey="value" name="O'quvchilar" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <div className="chart-empty-state">
+                                                    <Inbox size={26} />
+                                                    <span>Ma'lumot topilmadi</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="chart-card glass-card">
+                                        <div className="chart-header">
+                                            <h3 className="chart-title">Holatlar Taqsimoti</h3>
+                                            <InfoTooltip text="O'quvchilarning joriy holati (faol, bitirgan, nofaol)" />
+                                        </div>
+                                        <div className="chart-body" style={{ height: '240px' }}>
+                                            {studentsData.status_breakdown?.length > 0 ? (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={studentsData.status_breakdown}
+                                                            dataKey="value"
+                                                            nameKey="name"
+                                                            cx="50%"
+                                                            cy="50%"
+                                                            outerRadius={80}
+                                                        >
+                                                            {studentsData.status_breakdown.map((entry, index) => (
+                                                                <Cell key={`status-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
+                                                            ))}
+                                                        </Pie>
+                                                        <Tooltip content={<CustomChartTooltip valueSuffix=" nafar" />} />
+                                                        <Legend />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <div className="chart-empty-state">
+                                                    <Inbox size={26} />
+                                                    <span>Ma'lumot topilmadi</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Detailed Classes Breakdown Table */}
+                                <div className="analytics-table-card glass-card">
+                                    <div className="table-card-header">
+                                        <h3>Sinflar Kesimida Batafsil Hisobot</h3>
+                                        <span className="badge-count">Jami: {studentsData.classes_breakdown?.length || 0} sinf</span>
+                                    </div>
+                                    <div className="table-responsive">
+                                        <table className="analytics-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Sinf nomi</th>
+                                                    <th>Faol O'quvchilar</th>
+                                                    <th>Sinf Sig'imi</th>
+                                                    <th>Bo'sh O'rinlar</th>
+                                                    <th>To'lganlik Foizi</th>
+                                                    <th>Holati</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {studentsData.classes_breakdown?.length > 0 ? (
+                                                    studentsData.classes_breakdown.map(c => (
+                                                        <tr key={c.id}>
+                                                            <td><strong>{c.name}</strong></td>
+                                                            <td>{c.student_count} nafar</td>
+                                                            <td>{c.capacity || '-'}</td>
+                                                            <td><span className="seat-badge">{c.available_seats} ta</span></td>
+                                                            <td>
+                                                                <UITooltip text={`To'lganlik darajasi: ${c.fill_rate}%`} position="top">
+                                                                    <div className="progress-cell">
+                                                                        <div className="progress-bar-bg">
+                                                                            <div
+                                                                                className="progress-bar-fill"
+                                                                                style={{
+                                                                                    width: `${Math.min(c.fill_rate, 100)}%`,
+                                                                                    backgroundColor: c.fill_rate > 90 ? '#10b981' : c.fill_rate > 50 ? '#6366f1' : '#f59e0b'
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                        <span className="progress-text">{c.fill_rate}%</span>
+                                                                    </div>
+                                                                </UITooltip>
+                                                            </td>
+                                                            <td>
+                                                                {c.available_seats === 0 ? (
+                                                                    <UITooltip text="Barcha o'rinlar band qilingan" position="top">
+                                                                        <span className="status-pill danger">To'lgan</span>
+                                                                    </UITooltip>
+                                                                ) : c.available_seats <= 3 ? (
+                                                                    <UITooltip text="3 tadan kam bo'sh o'rin qolgan" position="top">
+                                                                        <span className="status-pill warning">Kam joy</span>
+                                                                    </UITooltip>
+                                                                ) : (
+                                                                    <UITooltip text="Yangi qabul uchun joylar yetarli" position="top">
+                                                                        <span className="status-pill success">Joy bor</span>
+                                                                    </UITooltip>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan={6} className="table-empty-row">
+                                                            <div className="table-empty-inner">
+                                                                <Inbox size={26} />
+                                                                <span>Ma'lumot topilmadi</span>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="chart-empty-state" style={{ minHeight: '300px' }}>
+                                <Inbox size={36} />
+                                <span>O'quvchilar bo'yicha ma'lumot topilmadi</span>
+                            </div>
+                        )
+                    )}
+
+                    {/* 2. SALES & FINANCE TAB */}
+                    {activeTab === 'sales' && (
+                        salesData ? (
+                            <div className="tab-view-container animate-slideUp">
+                                {/* KPI Cards Grid */}
+                                <div className="kpi-grid">
+                                    <UITooltip text="Mavjud barcha faol va rasmiylashtirilgan shartnomalarning umumiy summasi" position="top" className="w-full">
+                                        <div className="kpi-card glass-card" style={{ width: '100%' }}>
+                                            <div className="kpi-icon-wrapper primary">
+                                                <DollarSign size={22} />
+                                            </div>
+                                            <div className="kpi-info">
+                                                <span className="kpi-label">Shartnomalar Hajmi</span>
+                                                <h3 className="kpi-value">{formatMoney(salesData.kpi.total_contracts_amount)}</h3>
+                                                <span className="kpi-trend positive">
+                                                    {salesData.kpi.active_contracts_count} ta faol shartnoma
+                                                </span>
                                             </div>
                                         </div>
-                                        <button
-                                            className="operator-funnel-close-btn"
-                                            onClick={() => setSelectedOperator(null)}
-                                        >
-                                            <X size={18} />
-                                        </button>
+                                    </UITooltip>
+
+                                    <UITooltip text="Haqiqatda qabul qilingan va kassaga kirim qilingan to'lovlar" position="top" className="w-full">
+                                        <div className="kpi-card glass-card" style={{ width: '100%' }}>
+                                            <div className="kpi-icon-wrapper success">
+                                                <Wallet size={22} />
+                                            </div>
+                                            <div className="kpi-info">
+                                                <span className="kpi-label">Yig'ilgan Tushum</span>
+                                                <h3 className="kpi-value">{formatMoney(salesData.kpi.total_collected_amount)}</h3>
+                                                <span className="kpi-trend success">
+                                                    {salesData.kpi.collection_rate}% to'lov intizomi
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </UITooltip>
+
+                                    <UITooltip text="Shartnomalar bo'yicha o'quvchilarning qoldiq qarzdorlik summasi" position="top" className="w-full">
+                                        <div className="kpi-card glass-card" style={{ width: '100%' }}>
+                                            <div className="kpi-icon-wrapper danger">
+                                                <AlertCircle size={22} />
+                                            </div>
+                                            <div className="kpi-info">
+                                                <span className="kpi-label">Qoldiq Qarzdorlik</span>
+                                                <h3 className="kpi-value">{formatMoney(salesData.kpi.total_debt_amount)}</h3>
+                                                <span className="kpi-trend negative">
+                                                    {salesData.kpi.debtor_contracts_count} ta qarzdor shartnoma
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </UITooltip>
+
+                                    <UITooltip text="Bitta shartnomaga to'g'ri keluvchi o'rtacha to'lov qiymati" position="top" className="w-full">
+                                        <div className="kpi-card glass-card" style={{ width: '100%' }}>
+                                            <div className="kpi-icon-wrapper info">
+                                                <CreditCard size={22} />
+                                            </div>
+                                            <div className="kpi-info">
+                                                <span className="kpi-label">O'rtacha Chek (Deal Size)</span>
+                                                <h3 className="kpi-value">{formatMoney(salesData.kpi.avg_contract_value)}</h3>
+                                                <span className="kpi-trend info">1 ta shartnomaga</span>
+                                            </div>
+                                        </div>
+                                    </UITooltip>
+                                </div>
+
+                                {/* Sales Dynamic & Payment Methods */}
+                                <div className="charts-grid-2col">
+                                    <div className="chart-card glass-card">
+                                        <div className="chart-header">
+                                            <div>
+                                                <h3 className="chart-title">Oylik Tushum va Shartnomalar Dinamikasi</h3>
+                                                <p className="chart-subtitle">Haqiqiy to'lovlar tushumi (so'm) va yangi shartnomalar soni</p>
+                                            </div>
+                                            <InfoTooltip text="Oylar kesimida yig'ilgan tushum (so'm) va tuzilgan yangi shartnomalar soni dinamikasi" />
+                                        </div>
+                                        <div className="chart-body" style={{ height: '320px' }}>
+                                            {salesData.sales_trend?.length > 0 ? (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <ComposedChart data={salesData.sales_trend} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} opacity={0.5} />
+                                                        <XAxis dataKey="label" stroke="var(--text-tertiary)" fontSize={12} tickLine={false} />
+                                                        <YAxis yAxisId="left" stroke="var(--text-tertiary)" fontSize={12} tickLine={false} axisLine={false} />
+                                                        <YAxis yAxisId="right" orientation="right" stroke="var(--text-tertiary)" fontSize={12} tickLine={false} axisLine={false} />
+                                                        <Tooltip content={<CustomChartTooltip />} />
+                                                        <Legend />
+                                                        <Bar yAxisId="left" dataKey="collected" name="Yig'ilgan tushum (so'm)" fill="#10b981" radius={[6, 6, 0, 0]} />
+                                                        <Line yAxisId="right" type="monotone" dataKey="contracts_count" name="Shartnomalar soni" stroke="#6366f1" strokeWidth={3} dot={{ r: 4 }} />
+                                                    </ComposedChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <div className="chart-empty-state">
+                                                    <Inbox size={30} />
+                                                    <span>Moliyaviy ma'lumotlar mavjud emas</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
-                                    {/* KPI row */}
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', marginBottom: '16px' }}>
-                                        <div className="operator-funnel-kpi">
-                                            <div className="operator-funnel-kpi-value" style={{ color: '#6366f1' }}>{selectedOperator.count}</div>
-                                            <div className="operator-funnel-kpi-label">Jami</div>
+                                    <div className="chart-card glass-card">
+                                        <div className="chart-header">
+                                            <div>
+                                                <h3 className="chart-title">To'lov Turlari Balansi</h3>
+                                                <p className="chart-subtitle">Naqd, Plastik karta, Click/Payme va Bank o'tkazmalari</p>
+                                            </div>
+                                            <InfoTooltip text="Qaysi to'lov usuli (Naqd, Karta, Payme/Click, Bank) orqali ko'proq pul tushganligi ulushi" />
                                         </div>
-                                        <div className="operator-funnel-kpi">
-                                            <div className="operator-funnel-kpi-value" style={{ color: '#10b981' }}>{selectedOperator.converted}</div>
-                                            <div className="operator-funnel-kpi-label">Sotuvlar</div>
+                                        <div className="chart-body" style={{ height: '320px' }}>
+                                            {salesData.payment_methods?.length > 0 ? (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={salesData.payment_methods}
+                                                            dataKey="total"
+                                                            nameKey="name"
+                                                            cx="50%"
+                                                            cy="50%"
+                                                            innerRadius={65}
+                                                            outerRadius={95}
+                                                            paddingAngle={4}
+                                                        >
+                                                            {salesData.payment_methods.map((entry, index) => (
+                                                                <Cell key={`pm-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
+                                                            ))}
+                                                        </Pie>
+                                                        <Tooltip content={<CustomChartTooltip />} />
+                                                        <Legend />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <div className="chart-empty-state">
+                                                    <Inbox size={30} />
+                                                    <span>To'lov turlari mavjud emas</span>
+                                                </div>
+                                            )}
                                         </div>
-                                        <div className="operator-funnel-kpi">
-                                            <div className="operator-funnel-kpi-value" style={{ color: '#f59e0b' }}>{selectedOperator.conversion_rate}%</div>
-                                            <div className="operator-funnel-kpi-label">Konversiya</div>
+                                    </div>
+                                </div>
+
+                                {/* Revenue by Class & Debtor Aging */}
+                                <div className="charts-grid-2col">
+                                    <div className="chart-card glass-card">
+                                        <div className="chart-header">
+                                            <h3 className="chart-title">Sinflar Kesimida Daromad (Top 10)</h3>
+                                            <InfoTooltip text="Eng ko'p daromad keltirgan eng yaxshi sinflar reytingi" />
                                         </div>
-                                        <div className="operator-funnel-kpi">
-                                            <div className="operator-funnel-kpi-value" style={{ color: '#8b5cf6' }}>{selectedOperator.avg_reaction_time}</div>
-                                            <div className="operator-funnel-kpi-label">O'rt. reaksiya</div>
+                                        <div className="chart-body" style={{ height: '280px' }}>
+                                            {salesData.revenue_by_class?.length > 0 ? (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={salesData.revenue_by_class} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} opacity={0.5} />
+                                                        <XAxis dataKey="name" stroke="var(--text-tertiary)" fontSize={12} tickLine={false} />
+                                                        <YAxis stroke="var(--text-tertiary)" fontSize={12} tickLine={false} axisLine={false} />
+                                                        <Tooltip content={<CustomChartTooltip />} />
+                                                        <Bar dataKey="total" name="Jami daromad" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <div className="chart-empty-state">
+                                                    <Inbox size={26} />
+                                                    <span>Ma'lumot topilmadi</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
-                                    {/* Funnel Chart */}
-                                    <div style={{ height: '420px' }}>
-                                        {!selectedOperator.stages || selectedOperator.stages.length === 0 ? (
-                                            <div className="chart-no-data">Ma'lumot topilmadi</div>
+                                    <div className="chart-card glass-card">
+                                        <div className="chart-header">
+                                            <h3 className="chart-title">Qarzdorlik Muddatlari (Debtor Aging)</h3>
+                                            <InfoTooltip text="Qarzdorlik muddatlari (1-15, 16-30, 31-60, 60+ kun) bo'yicha to'lanmagan mablag'lar taqsimoti" />
+                                        </div>
+                                        <div className="chart-body" style={{ height: '280px' }}>
+                                            {salesData.debt_aging?.length > 0 ? (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={salesData.debt_aging} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} opacity={0.5} />
+                                                        <XAxis dataKey="range" stroke="var(--text-tertiary)" fontSize={12} tickLine={false} />
+                                                        <YAxis stroke="var(--text-tertiary)" fontSize={12} tickLine={false} axisLine={false} />
+                                                        <Tooltip content={<CustomChartTooltip />} />
+                                                        <Bar dataKey="total" name="Qarzdorlik summasi" fill="#ef4444" radius={[6, 6, 0, 0]} />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <div className="chart-empty-state">
+                                                    <Inbox size={26} />
+                                                    <span>Ma'lumot topilmadi</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="chart-empty-state" style={{ minHeight: '300px' }}>
+                                <Inbox size={36} />
+                                <span>Sotuv va moliya bo'yicha ma'lumot topilmadi</span>
+                            </div>
+                        )
+                    )}
+
+                    {/* 3. LEADS & FUNNEL TAB */}
+                    {activeTab === 'leads' && (
+                        leadsData ? (
+                            <div className="tab-view-container animate-slideUp">
+                                {/* KPI Cards Grid */}
+                                <div className="kpi-grid">
+                                    <UITooltip text="Tizimga kelib tushgan jami yangi murojaatlar" position="top" className="w-full">
+                                        <div className="kpi-card glass-card" style={{ width: '100%' }}>
+                                            <div className="kpi-icon-wrapper primary">
+                                                <Target size={22} />
+                                            </div>
+                                            <div className="kpi-info">
+                                                <span className="kpi-label">Jami Leadlar</span>
+                                                <h3 className="kpi-value">{leadsData.conversion_stats?.total || 0}</h3>
+                                                <span className="kpi-trend positive">Faol muzokaralar: {leadsData.conversion_stats?.active}</span>
+                                            </div>
+                                        </div>
+                                    </UITooltip>
+
+                                    <UITooltip text="Muvaffaqiyatli shartnoma tuzgan va o'quvchiga aylangan leadlar" position="top" className="w-full">
+                                        <div className="kpi-card glass-card" style={{ width: '100%' }}>
+                                            <div className="kpi-icon-wrapper success">
+                                                <UserCheck size={22} />
+                                            </div>
+                                            <div className="kpi-info">
+                                                <span className="kpi-label">Konvertatsiya Bo'lgan</span>
+                                                <h3 className="kpi-value">{leadsData.conversion_stats?.converted || 0}</h3>
+                                                <span className="kpi-trend success">O'quvchiga aylangan</span>
+                                            </div>
+                                        </div>
+                                    </UITooltip>
+
+                                    <UITooltip text="Jami leadlarning shartnomaga aylanish umumiy foizi" position="top" className="w-full">
+                                        <div className="kpi-card glass-card" style={{ width: '100%' }}>
+                                            <div className="kpi-icon-wrapper info">
+                                                <Percent size={22} />
+                                            </div>
+                                            <div className="kpi-info">
+                                                <span className="kpi-label">Konversiya Darajasi (CR)</span>
+                                                <h3 className="kpi-value">{leadsData.conversion_stats?.rate || 0}%</h3>
+                                                <span className="kpi-trend info">Umumiy muvaffaqiyat</span>
+                                            </div>
+                                        </div>
+                                    </UITooltip>
+
+                                    <UITooltip text="Rejalashtirilgan va muddati o'tib ketgan qayta qo'ng'iroqlar" position="top" className="w-full">
+                                        <div className="kpi-card glass-card" style={{ width: '100%' }}>
+                                            <div className="kpi-icon-wrapper warning">
+                                                <Clock size={22} />
+                                            </div>
+                                            <div className="kpi-info">
+                                                <span className="kpi-label">Eslatmalar (Follow-ups)</span>
+                                                <h3 className="kpi-value">{leadsData.conversion_stats?.follow_up_total || 0}</h3>
+                                                <span className="kpi-trend negative">Muddati o'tgan: {leadsData.conversion_stats?.follow_up_overdue}</span>
+                                            </div>
+                                        </div>
+                                    </UITooltip>
+                                </div>
+
+                                {/* Conversion Funnel Visualization */}
+                                <div className="chart-card glass-card funnel-card">
+                                    <div className="chart-header">
+                                        <div>
+                                            <h3 className="chart-title">Leadlar Konversiya Voronkasi (Funnel Pipeline)</h3>
+                                            <p className="chart-subtitle">Har bir bosqichdagi leadlar ulushi va o'tish darajasi</p>
+                                        </div>
+                                        <InfoTooltip text="Murojaatdan boshlab o'quvchiga aylanguncha bo'lgan bosqichma-bosqich oqim" />
+                                    </div>
+                                    <div className="funnel-container">
+                                        {leadsData.funnel_stages?.length > 0 ? (
+                                            leadsData.funnel_stages.map((stage, idx) => (
+                                                <UITooltip key={stage.id || idx} text={`${stage.name}: ${stage.count} ta lead (${stage.percentage}%)`} position="top" className="w-full">
+                                                    <div className="funnel-step" style={{ width: '100%' }}>
+                                                        <div className="funnel-step-header">
+                                                            <span className="step-name">{stage.name}</span>
+                                                            <span className="step-count">{stage.count} ta ({stage.percentage}%)</span>
+                                                        </div>
+                                                        <div className="funnel-bar-wrapper">
+                                                            <div
+                                                                className="funnel-bar-fill"
+                                                                style={{
+                                                                    width: `${Math.max(stage.percentage, 4)}%`,
+                                                                    backgroundColor: stage.color || COLORS[idx % COLORS.length]
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </UITooltip>
+                                            ))
                                         ) : (
-                                            <div id="detail-funnel-chart-div" style={{ width: '100%', height: '100%' }}></div>
+                                            <div className="chart-empty-state">
+                                                <Inbox size={28} />
+                                                <span>Voronka bosqichlari ma'lumoti topilmadi</span>
+                                            </div>
                                         )}
                                     </div>
+                                </div>
 
-                                    {/* Stage pills */}
-                                    {selectedOperator.stages?.length > 0 && (
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
-                                            {selectedOperator.stages
-                                                .filter(st => !["Ko'tarmadi", "Ko`tarmadi", "Xato raqamlar", "Yangi leadlar"].includes(st.stage_name))
-                                                .map((st, si) => {
-                                                    const isHidden = hiddenStages.includes(st.stage_name);
-                                                    return (
-                                                        <button
-                                                            key={si}
-                                                            onClick={() => {
-                                                                setHiddenStages(prev =>
-                                                                    isHidden
-                                                                        ? prev.filter(name => name !== st.stage_name)
-                                                                        : [...prev, st.stage_name]
-                                                                );
-                                                            }}
-                                                            className={`stage-pill-btn ${isHidden ? 'hidden' : ''}`}
-                                                            style={{
-                                                                display: 'inline-flex', alignItems: 'center', gap: '5px',
-                                                                padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 600,
-                                                                background: isHidden ? 'rgba(255,255,255,0.02)' : `${st.stage_color || '#6366f1'}15`,
-                                                                color: isHidden ? 'var(--text-tertiary)' : st.stage_color || '#6366f1',
-                                                                border: `1px solid ${isHidden ? 'var(--border-color)' : (st.stage_color || '#6366f1') + '30'}`,
-                                                                cursor: 'pointer',
-                                                                transition: 'all 0.2s ease',
-                                                                opacity: isHidden ? 0.6 : 1,
-                                                                textDecoration: isHidden ? 'line-through' : 'none'
-                                                            }}
+                                {/* Daily Leads & Operator Performance */}
+                                <div className="charts-grid-2col">
+                                    <div className="chart-card glass-card">
+                                        <div className="chart-header">
+                                            <div>
+                                                <h3 className="chart-title">Hafta Kunlari Bo'yicha Oqim</h3>
+                                                <p className="chart-subtitle">Mijozlar eng faol murojaat qiladigan kunlar</p>
+                                            </div>
+                                            <InfoTooltip text="Hafta kunlari (Dushanba-Yakshanba) bo'yicha qachon eng ko'p murojaat kelishi" />
+                                        </div>
+                                        <div className="chart-body" style={{ height: '300px' }}>
+                                            {leadsData.peak_days?.length > 0 ? (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={leadsData.peak_days} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} opacity={0.5} />
+                                                        <XAxis dataKey="day" stroke="var(--text-tertiary)" fontSize={11} tickLine={false} />
+                                                        <YAxis stroke="var(--text-tertiary)" fontSize={11} tickLine={false} axisLine={false} />
+                                                        <Tooltip content={<CustomChartTooltip valueSuffix=" lead" />} />
+                                                        <Bar dataKey="count" name="Leadlar soni" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <div className="chart-empty-state">
+                                                    <Inbox size={26} />
+                                                    <span>Ma'lumot mavjud emas</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="chart-card glass-card">
+                                        <div className="chart-header">
+                                            <div>
+                                                <h3 className="chart-title">Qo'ng'iroq Natijalari Balansi</h3>
+                                                <p className="chart-subtitle">Javob berilgan va berilmagan qo'ng'iroqlar</p>
+                                            </div>
+                                            <InfoTooltip text="Operatorlar tomonidan amalga oshirilgan qo'ng'iroqlarning natijalari taqsimoti" />
+                                        </div>
+                                        <div className="chart-body" style={{ height: '300px' }}>
+                                            {leadsData.call_status_distribution?.length > 0 ? (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={leadsData.call_status_distribution}
+                                                            dataKey="value"
+                                                            nameKey="name"
+                                                            cx="50%"
+                                                            cy="50%"
+                                                            innerRadius={60}
+                                                            outerRadius={90}
+                                                            paddingAngle={4}
                                                         >
-                                                            <span style={{
-                                                                width: '7px', height: '7px', borderRadius: '50%',
-                                                                background: isHidden ? 'var(--text-tertiary)' : st.stage_color || '#6366f1',
-                                                                opacity: isHidden ? 0.5 : 1
-                                                            }} />
-                                                            {st.stage_name}: <b>{st.count}</b>
-                                                        </button>
-                                                    );
-                                                })}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-
-                {/* Source Distribution */}
-                <div className="chart-card">
-                    <div className="chart-card-header">
-                        <span className="chart-number">Manbalar</span>
-                        <h4>Mijozlar Manbasi (Sotuvlar)</h4>
-                    </div>
-                    <div className="chart-body" style={{ height: '350px' }}>
-                        {!data?.source_distribution || data.source_distribution.length === 0 ? (
-                            <div className="chart-no-data">Ma'lumot topilmadi</div>
-                        ) : (
-                            <div id="source-chart-div" style={{ width: '100%', height: '100%' }}></div>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Operator Formalar Statistics Section */}
-            {formalarData && (
-                <div className="formalar-section">
-                    <div className="section-header" style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '32px 0 20px' }}>
-                        <h2 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>
-                            📋 Formalardan Ko'chirilganlar
-                        </h2>
-                        <span style={{
-                            background: 'rgba(99, 102, 241, 0.15)',
-                            color: '#818cf8',
-                            padding: '4px 12px',
-                            borderRadius: '20px',
-                            fontSize: '13px',
-                            fontWeight: '600'
-                        }}>
-                            Jami: {formalarData.total_moved} ta
-                        </span>
-                    </div>
-
-                    {formalarData.operators?.length > 0 ? (
-                        <>
-                            {/* Bar Chart */}
-                            <div className="chart-card wide" style={{ marginBottom: '20px' }}>
-                                <div className="chart-card-header">
-                                    <span className="chart-number">Operatorlar</span>
-                                    <h4>Formalardan nechta lead ko'chirildi</h4>
-                                </div>
-                                <div className="chart-body" style={{ height: '350px' }}>
-                                    {!formalarData?.operators || formalarData.operators.length === 0 ? (
-                                        <div className="chart-no-data">Ma'lumot topilmadi</div>
-                                    ) : (
-                                        <div id="formalar-chart-div" style={{ width: '100%', height: '100%' }}></div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Detailed Table */}
-                            <div className="chart-card wide">
-                                <div className="chart-card-header">
-                                    <span className="chart-number">Jadval</span>
-                                    <h4>Operator ko'chirish tafsilotlari</h4>
-                                </div>
-                                <div style={{ padding: '0 20px 20px' }}>
-                                    <table className="formalar-table">
-                                        <thead>
-                                            <tr>
-                                                <th>#</th>
-                                                <th>Operator</th>
-                                                <th>Ko'chirilgan</th>
-                                                <th>Qayerga ko'chirildi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {formalarData.operators.map((op, i) => (
-                                                <tr key={op.operator_id} className={i === 0 ? 'top-operator' : ''}>
-                                                    <td>
-                                                        {i === 0 ? (
-                                                            <span className="rank-badge gold">🥇</span>
-                                                        ) : i === 1 ? (
-                                                            <span className="rank-badge silver">🥈</span>
-                                                        ) : i === 2 ? (
-                                                            <span className="rank-badge bronze">🥉</span>
-                                                        ) : (
-                                                            <span className="rank-number">{i + 1}</span>
-                                                        )}
-                                                    </td>
-                                                    <td>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                            <div style={{
-                                                                width: '36px',
-                                                                height: '36px',
-                                                                borderRadius: '10px',
-                                                                background: `linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.4))`,
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                color: '#818cf8',
-                                                                fontWeight: '700',
-                                                                fontSize: '14px'
-                                                            }}>
-                                                                {op.operator_name?.charAt(0)?.toUpperCase()}
-                                                            </div>
-                                                            <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>
-                                                                {op.operator_name}
-                                                            </span>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <span style={{
-                                                            background: 'rgba(99, 102, 241, 0.12)',
-                                                            color: '#818cf8',
-                                                            padding: '4px 14px',
-                                                            borderRadius: '20px',
-                                                            fontWeight: '700',
-                                                            fontSize: '14px'
-                                                        }}>
-                                                            {op.moved_count}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                                            {op.destinations?.map((dest, j) => (
-                                                                <span key={j} style={{
-                                                                    background: `rgba(99, 102, 241, 0.1)`,
-                                                                    color: '#818cf8',
-                                                                    padding: '3px 10px',
-                                                                    borderRadius: '12px',
-                                                                    fontSize: '12px',
-                                                                    fontWeight: '500'
-                                                                }}>
-                                                                    {dest.stage_name}: {dest.count}
-                                                                </span>
+                                                            {leadsData.call_status_distribution.map((entry, index) => (
+                                                                <Cell key={`cs-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
                                                             ))}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="chart-card wide" style={{ padding: '40px', textAlign: 'center' }}>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>
-                                Tanlangan davrda formalardan ko'chirilgan leadlar topilmadi
-                            </p>
-                        </div>
-                    )}
-                </div>
-            )}
-            </>
-            )}
-
-            {/* Marketing Statistics Section */}
-            {activeTab === 'marketing' && marketingData && (
-                <div className="marketing-section" style={{ marginTop: '32px' }}>
-                    <div className="section-header" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-                        <h2 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>
-                            📈 Marketing Statistikasi
-                        </h2>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
-                        <div className="chart-card">
-                            <div className="chart-card-header">
-                                <span className="chart-number">Leadlar Ulushi</span>
-                                <h4>Mutaxassislar bo'yicha taqsimot</h4>
-                            </div>
-                            {!marketingData || marketingData.length === 0 ? (
-                                <div className="chart-body" style={{ height: "300px" }}>
-                                    <div className="chart-no-data">Ma'lumot topilmadi</div>
-                                </div>
-                            ) : (
-                                <div id="marketing-lead-chart-div" style={{ width: "100%", height: "300px" }}></div>
-                            )}
-                        </div>
-                        <div className="chart-card">
-                            <div className="chart-card-header">
-                                <span className="chart-number">Samaradorlik</span>
-                                <h4>Leadlar soni bo'yicha taqqoslash</h4>
-                            </div>
-                            {!marketingData || marketingData.length === 0 ? (
-                                <div className="chart-body" style={{ height: "300px" }}>
-                                    <div className="chart-no-data">Ma'lumot topilmadi</div>
-                                </div>
-                            ) : (
-                                <div id="marketing-perf-chart-div" style={{ width: "100%", height: "300px" }}></div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Marketing Specialist Stats - Cards */}
-                    <div className="section-header" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-                        <h2 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text-primary)', margin: 0 }}>
-                            👤 Marketing mutaxassislari samaradorligi
-                        </h2>
-                    </div>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px', marginBottom: '40px' }}>
-                        {marketingData.map((m) => (
-                            <div key={m.id} className="chart-card" style={{ 
-                                padding: '24px', 
-                                border: '1px solid rgba(255,255,255,0.05)',
-                                background: 'rgba(30, 41, 59, 0.4)',
-                                backdropFilter: 'blur(10px)',
-                                borderRadius: '24px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '20px',
-                                height: 'fit-content'
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                    <div style={{
-                                        width: '56px', height: '56px', borderRadius: '18px',
-                                        background: 'linear-gradient(135deg, #10b981, #34d399)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        color: '#fff', fontSize: '20px', fontWeight: '800',
-                                        boxShadow: '0 8px 16px rgba(16, 185, 129, 0.2)'
-                                    }}>
-                                        {m.name?.charAt(0)?.toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <h4 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: 'var(--text-primary)' }}>{m.name}</h4>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-                                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
-                                            <span style={{ fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: '600' }}>Mutaxassis</span>
+                                                        </Pie>
+                                                        <Tooltip content={<CustomChartTooltip valueSuffix=" ta" />} />
+                                                        <Legend />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <div className="chart-empty-state">
+                                                    <Inbox size={26} />
+                                                    <span>Qo'ng'iroq holatlari mavjud emas</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-
-                                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '14px', borderRadius: '16px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.02)' }}>
-                                        <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>Jadvallar</div>
-                                        <div style={{ fontSize: '18px', fontWeight: '800', color: '#f59e0b' }}>{m.sheets_count} ta</div>
+                                {/* Operator Leaderboard Table */}
+                                <div className="analytics-table-card glass-card">
+                                    <div className="table-card-header">
+                                        <h3>Operatorlar Samaradorlik Peshqadamlari (Leaderboard)</h3>
                                     </div>
-                                </div>
-
-                                <div style={{ 
-                                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(99, 102, 241, 0.05))', 
-                                    padding: '20px', 
-                                    borderRadius: '20px', 
-                                    display: 'flex', 
-                                    justifyContent: 'space-between', 
-                                    alignItems: 'center',
-                                    border: '1px solid rgba(99, 102, 241, 0.15)'
-                                }}>
-                                    <div>
-                                        <div style={{ fontSize: '10px', color: '#818cf8', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '1px' }}>Jami Leadlar</div>
-                                        <div style={{ fontSize: '28px', fontWeight: '900', color: 'var(--text-primary)', lineHeight: '1.2' }}>{m.leads_count}</div>
-                                    </div>
-                                    <div style={{ 
-                                        width: '44px', height: '44px', borderRadius: '12px', 
-                                        background: 'rgba(99, 102, 241, 0.2)', 
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: '24px'
-                                    }}>
-                                        🚀
+                                    <div className="table-responsive">
+                                        <table className="analytics-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Operator</th>
+                                                    <th>Qabul Qilingan Leadlar</th>
+                                                    <th>Konvertatsiya Qilingan</th>
+                                                    <th>Konversiya %</th>
+                                                    <th>Javob Berish Tezligi</th>
+                                                    <th>Qo'ng'iroq Samaradorligi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {leadsData.leads_by_operator?.length > 0 ? (
+                                                    leadsData.leads_by_operator.map(op => (
+                                                        <tr key={op.operator_id}>
+                                                            <td><strong>{op.operator_name}</strong></td>
+                                                            <td>{op.count} ta</td>
+                                                            <td><span className="badge-converted">{op.converted} ta</span></td>
+                                                            <td>
+                                                                <UITooltip text={`Konversiya ko'rsatkichi: ${op.conversion_rate}%`} position="top">
+                                                                    <div className="progress-cell">
+                                                                        <div className="progress-bar-bg">
+                                                                            <div
+                                                                                className="progress-bar-fill"
+                                                                                style={{
+                                                                                    width: `${Math.min(op.conversion_rate, 100)}%`,
+                                                                                    backgroundColor: op.conversion_rate > 30 ? '#10b981' : '#6366f1'
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                        <span className="progress-text">{op.conversion_rate}%</span>
+                                                                    </div>
+                                                                </UITooltip>
+                                                            </td>
+                                                            <td>{op.avg_reaction_time || "-"}</td>
+                                                            <td>{op.call_rate}%</td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan={6} className="table-empty-row">
+                                                            <div className="table-empty-inner">
+                                                                <Inbox size={26} />
+                                                                <span>Ma'lumot topilmadi</span>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
+                        ) : (
+                            <div className="chart-empty-state" style={{ minHeight: '300px' }}>
+                                <Inbox size={36} />
+                                <span>Leadlar bo'yicha ma'lumot topilmadi</span>
+                            </div>
+                        )
+                    )}
 
+                    {/* 4. MARKETING & CHANNELS TAB */}
+                    {activeTab === 'marketing' && (
+                        marketingData ? (
+                            <div className="tab-view-container animate-slideUp">
+                                {/* KPI Cards Grid */}
+                                <div className="kpi-grid">
+                                    <UITooltip text="Tizimda ulangan va hisoblanayotgan marketing manbalari" position="top" className="w-full">
+                                        <div className="kpi-card glass-card" style={{ width: '100%' }}>
+                                            <div className="kpi-icon-wrapper primary">
+                                                <Megaphone size={22} />
+                                            </div>
+                                            <div className="kpi-info">
+                                                <span className="kpi-label">Marketing Kanallari</span>
+                                                <h3 className="kpi-value">{marketingData.channel_roi?.length || 0} ta</h3>
+                                                <span className="kpi-trend positive">Faol reklama manbalari</span>
+                                            </div>
+                                        </div>
+                                    </UITooltip>
 
+                                    <UITooltip text="Reklama kanallari orqali kelib shartnoma imzolagan o'quvchilar soni" position="top" className="w-full">
+                                        <div className="kpi-card glass-card" style={{ width: '100%' }}>
+                                            <div className="kpi-icon-wrapper success">
+                                                <Share2 size={22} />
+                                            </div>
+                                            <div className="kpi-info">
+                                                <span className="kpi-label">Reklamadan Kelgan O'quvchilar</span>
+                                                <h3 className="kpi-value">
+                                                    {marketingData.channel_roi?.reduce((sum, item) => sum + (item.students_count || 0), 0)} nafar
+                                                </h3>
+                                                <span className="kpi-trend success">Shartnoma tuzgan</span>
+                                            </div>
+                                        </div>
+                                    </UITooltip>
+
+                                    <UITooltip text="Reklama orqali kelgan o'quvchilardan tushgan umumiy to'lovlar summasi" position="top" className="w-full">
+                                        <div className="kpi-card glass-card" style={{ width: '100%' }}>
+                                            <div className="kpi-icon-wrapper info">
+                                                <DollarSign size={22} />
+                                            </div>
+                                            <div className="kpi-info">
+                                                <span className="kpi-label">Reklamadan Tushgan Tushum</span>
+                                                <h3 className="kpi-value">
+                                                    {formatMoney(marketingData.channel_roi?.reduce((sum, item) => sum + (item.revenue || 0), 0))}
+                                                </h3>
+                                                <span className="kpi-trend info">Jami tushum</span>
+                                            </div>
+                                        </div>
+                                    </UITooltip>
+                                </div>
+
+                                {/* Channel ROI Charts */}
+                                <div className="charts-grid-2col">
+                                    <div className="chart-card glass-card">
+                                        <div className="chart-header">
+                                            <div>
+                                                <h3 className="chart-title">Kanallar Bo'yicha Mijozlar va O'quvchilar</h3>
+                                                <p className="chart-subtitle">Qaysi kanal ko'proq real o'quvchi keltirgani</p>
+                                            </div>
+                                            <InfoTooltip text="Murojaat qilgan barcha mijozlar va ular ichidan shartnoma tuzgan haqiqiy o'quvchilar taqqosi" />
+                                        </div>
+                                        <div className="chart-body" style={{ height: '320px' }}>
+                                            {marketingData.channel_roi?.length > 0 ? (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <BarChart data={marketingData.channel_roi} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} opacity={0.5} />
+                                                        <XAxis dataKey="name" stroke="var(--text-tertiary)" fontSize={12} tickLine={false} />
+                                                        <YAxis stroke="var(--text-tertiary)" fontSize={12} tickLine={false} axisLine={false} />
+                                                        <Tooltip content={<CustomChartTooltip valueSuffix=" nafar" />} />
+                                                        <Legend />
+                                                        <Bar dataKey="clients_count" name="Mijozlar (Murojaat)" fill="rgba(99, 102, 241, 0.4)" radius={[6, 6, 0, 0]} />
+                                                        <Bar dataKey="students_count" name="O'quvchilar (Shartnoma)" fill="#10b981" radius={[6, 6, 0, 0]} />
+                                                    </BarChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <div className="chart-empty-state">
+                                                    <Inbox size={30} />
+                                                    <span>Marketing ma'lumoti mavjud emas</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="chart-card glass-card">
+                                        <div className="chart-header">
+                                            <div>
+                                                <h3 className="chart-title">Manbalar Bo'yicha Tushum Taqsimoti</h3>
+                                                <p className="chart-subtitle">Har bir reklama kanali olib kelgan daromad (so'm)</p>
+                                            </div>
+                                            <InfoTooltip text="Har bir reklama kanali orqali tushgan daromad (so'm) ulushlari" />
+                                        </div>
+                                        <div className="chart-body" style={{ height: '320px' }}>
+                                            {marketingData.channel_roi?.length > 0 ? (
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={marketingData.channel_roi}
+                                                            dataKey="revenue"
+                                                            nameKey="name"
+                                                            cx="50%"
+                                                            cy="50%"
+                                                            innerRadius={65}
+                                                            outerRadius={95}
+                                                            paddingAngle={4}
+                                                        >
+                                                            {marketingData.channel_roi.map((entry, index) => (
+                                                                <Cell key={`roi-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
+                                                            ))}
+                                                        </Pie>
+                                                        <Tooltip content={<CustomChartTooltip />} />
+                                                        <Legend />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <div className="chart-empty-state">
+                                                    <Inbox size={30} />
+                                                    <span>Tushum ma'lumoti yo'q</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Marketing Specialists Breakdown */}
+                                <div className="analytics-table-card glass-card">
+                                    <div className="table-card-header">
+                                        <h3>Marketing Mutaxassislari va Kampaniyalar</h3>
+                                    </div>
+                                    <div className="table-responsive">
+                                        <table className="analytics-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Mutaxassis / Kampaniya</th>
+                                                    <th>Google Sheets Ulanmalari</th>
+                                                    <th>Jalb Qilingan Leadlar</th>
+                                                    <th>Konversiya Qilingan</th>
+                                                    <th>Konversiya Darajasi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {marketingData.specialists?.length > 0 ? (
+                                                    marketingData.specialists.map(m => (
+                                                        <tr key={m.id}>
+                                                            <td><strong>{m.name}</strong></td>
+                                                            <td>{m.sheets_count} ta jadval</td>
+                                                            <td>{m.leads_count} ta</td>
+                                                            <td><span className="badge-converted">{m.converted_count} ta</span></td>
+                                                            <td>
+                                                                <UITooltip text={`Konversiya: ${m.conversion_rate}%`} position="top">
+                                                                    <div className="progress-cell">
+                                                                        <div className="progress-bar-bg">
+                                                                            <div
+                                                                                className="progress-bar-fill"
+                                                                                style={{
+                                                                                    width: `${Math.min(m.conversion_rate, 100)}%`,
+                                                                                    backgroundColor: '#6366f1'
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                        <span className="progress-text">{m.conversion_rate}%</span>
+                                                                    </div>
+                                                                </UITooltip>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan={5} className="table-empty-row">
+                                                            <div className="table-empty-inner">
+                                                                <Inbox size={26} />
+                                                                <span>Ma'lumot topilmadi</span>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="chart-empty-state" style={{ minHeight: '300px' }}>
+                                <Inbox size={36} />
+                                <span>Marketing bo'yicha ma'lumot topilmadi</span>
+                            </div>
+                        )
+                    )}
                 </div>
             )}
 
@@ -1279,14 +1230,13 @@ const AnalyticsPage = () => {
             <AnalyticsFilterDrawer
                 isOpen={filterOpen}
                 onClose={() => setFilterOpen(false)}
-                onFilter={handleFilter}
+                onFilter={(newFilters) => setFilters(newFilters)}
                 activeTab={activeTab}
                 initialFilters={filters}
-                cities={[]} // Not used for leads yet
-                buildings={[]} // Not used for leads yet
+                classes={classes}
+                buildings={buildings}
                 stages={stages}
-
-                operators={operators.filter(u => u.role === 'operator' || u.role === 'sales_manager')}
+                operators={operators}
             />
         </div>
     );

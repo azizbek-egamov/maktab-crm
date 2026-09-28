@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Plus, Trash2, Send, Upload, FileText, Edit, HelpCircle, Download } from 'lucide-react';
 import { toast } from 'sonner';
@@ -13,6 +14,7 @@ import api from '../../services/api';
 import { formatDateInput, isValidDateStr, parseUIDateToApi, formatApiDateToUI } from '../../utils/dateFormatter';
 import { formatPhoneInput, parsePhoneToApi, formatApiPhoneToUI } from '../../utils/phoneFormatter';
 import { formatPrice, parsePrice } from '../../utils/priceFormatter';
+import useBodyScrollLock from '../../hooks/useBodyScrollLock';
 import './Students.css';
 
 const TABS = [
@@ -95,6 +97,8 @@ const StudentDetails = () => {
     const [editPaymentForm, setEditPaymentForm] = useState({ amount: '', method: 'cash', note: '', payment_date: '' });
     const [editDocModal, setEditDocModal] = useState({ open: false, doc: null });
     const [editDocForm, setEditDocForm] = useState({ title: '', doc_type: 'other', file: null });
+
+    useBodyScrollLock(editParentModal.open || editContractModal.open || editPaymentModal.open || editDocModal.open || chartModal.open);
 
     const load = async () => {
         setLoading(true);
@@ -701,7 +705,7 @@ const StudentDetails = () => {
                     )}
                 </div>
             </div>
-            {editParentModal.open && (
+            {editParentModal.open && createPortal(
                 <div className="modal-overlay" onClick={() => setEditParentModal({ open: false, link: null })}>
                     <div className="modal-content modal-form animate-fadeIn" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
                         <div className="modal-header">
@@ -732,10 +736,11 @@ const StudentDetails = () => {
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
-            {editContractModal.open && (
+            {editContractModal.open && createPortal(
                 <div className="modal-overlay" onClick={() => setEditContractModal({ open: false, contract: null })}>
                     <div className="modal-content modal-form animate-fadeIn" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
                         <div className="modal-header">
@@ -775,9 +780,10 @@ const StudentDetails = () => {
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
-            {editPaymentModal.open && (
+            {editPaymentModal.open && createPortal(
                 <div className="modal-overlay" onClick={() => setEditPaymentModal({ open: false, payment: null })}>
                     <div className="modal-content modal-form animate-fadeIn" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
                         <div className="modal-header">
@@ -813,9 +819,10 @@ const StudentDetails = () => {
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
-            {editDocModal.open && (
+            {editDocModal.open && createPortal(
                 <div className="modal-overlay" onClick={() => setEditDocModal({ open: false, doc: null })}>
                     <div className="modal-content modal-form animate-fadeIn" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
                         <div className="modal-header">
@@ -848,7 +855,8 @@ const StudentDetails = () => {
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

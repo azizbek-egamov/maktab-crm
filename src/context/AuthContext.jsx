@@ -31,7 +31,15 @@ export const AuthProvider = ({ children }) => {
                 localStorage.setItem('user', JSON.stringify(response.data));
             } catch (error) {
                 const refreshed = await refreshToken();
-                if (!refreshed) {
+                if (refreshed) {
+                    try {
+                        const retryRes = await api.get('/user/');
+                        setUser(retryRes.data);
+                        localStorage.setItem('user', JSON.stringify(retryRes.data));
+                    } catch (e) {
+                        logout();
+                    }
+                } else {
                     logout();
                 }
             }

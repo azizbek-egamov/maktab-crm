@@ -5,7 +5,10 @@ import { toast } from 'sonner';
 import ConvertLeadModal from './ConvertLeadModal';
 import EnrollStudentModal from './EnrollStudentModal';
 import Modal from '../../components/ui/Modal';
+import ExcelModal from '../../components/ExcelModal';
+import excelService from '../../services/excel';
 import { formatDateInput, isValidDateStr, parseUIDateToApi } from '../../utils/dateFormatter';
+
 import {
     SearchIcon,
     EditIcon,
@@ -115,6 +118,8 @@ const LeadsList = () => {
     const [deleteModal, setDeleteModal] = useState({ open: false, lead: null });
     const [convertModal, setConvertModal] = useState({ isOpen: false, lead: null });
     const [enrollModal, setEnrollModal] = useState({ isOpen: false, lead: null });
+    const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
+
 
     // Debounce search
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -266,12 +271,16 @@ const LeadsList = () => {
                     </button>
                 </div>
 
-                <div className="toolbar-right">
+                <div className="toolbar-right" style={{ display: 'flex', gap: '8px' }}>
+                    <button className="btn-v2 btn-v2-dark" onClick={() => setIsExcelModalOpen(true)}>
+                        <span>📊 Excel Import/Export</span>
+                    </button>
                     <button className="btn-v2 btn-v2-primary" onClick={() => openCreateModal()}>
                         <PlusIcon />
                         <span>Lead qo'shish</span>
                     </button>
                 </div>
+
             </div>
 
             {loading ? (
@@ -506,8 +515,18 @@ const LeadsList = () => {
                 onClose={() => setEnrollModal({ isOpen: false, lead: null })}
                 onSuccess={fetchLeads}
             />
+
+            {/* Excel Modal */}
+            <ExcelModal
+                isOpen={isExcelModalOpen}
+                onClose={() => setIsExcelModalOpen(false)}
+                type="leads"
+                title="Leadlar Bazasi (Excel)"
+                onImportSuccess={fetchLeads}
+            />
         </div>
     );
 };
 
 export default LeadsList;
+
