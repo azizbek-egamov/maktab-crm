@@ -1,16 +1,24 @@
 import api from './api';
 
 export const contractService = {
-    getAll: (params) => api.get('/student-contracts/', { params }),
-    get: (id) => api.get(`/student-contracts/${id}/`),
-    getById: (id) => api.get(`/student-contracts/${id}/`),
-    create: (data) => api.post('/student-contracts/', data),
-    update: (id, data) => api.patch(`/student-contracts/${id}/`, data),
-    delete: (id) => api.delete(`/student-contracts/${id}/`),
-    addPayment: (id, data) => api.post(`/student-contracts/${id}/add_payment/`, data),
-    makePayment: (id, data) => api.post(`/student-contracts/${id}/add_payment/`, data),
-    getPayments: (id) => api.get(`/contract-payments/?contract=${id}`),
+    getAll: (params) => api.get('/contracts/', { params }),
+    get: (id) => api.get(`/contracts/${id}/`),
+    getById: (id) => api.get(`/contracts/${id}/`),
+    create: (data) => api.post('/contracts/', data),
+    update: (id, data) => api.patch(`/contracts/${id}/`, data),
+    delete: (id) => api.delete(`/contracts/${id}/`),
+    getPayments: (id) => api.get(`/contracts/${id}/payments/`),
+    makePayment: (id, data) => api.post(`/contracts/${id}/make_payment/`, data),
+    updateSchedule: (id, data) => api.post(`/contracts/${id}/update_schedule/`, data),
+    adminAction: (id, data) => api.post(`/contracts/${id}/admin_payment/`, data),
+    downloadPdf: (id) => api.get(`/contracts/${id}/download_pdf/`, { responseType: 'blob' }),
+    downloadSchedulePdf: (id) => api.get(`/contracts/${id}/download_schedule_pdf/`, { responseType: 'blob' }),
+    downloadGrafikPdf: (id) => api.get(`/contracts/${id}/download_grafik_pdf/`, { responseType: 'blob' }),
+    downloadTransactionPdf: (id, transactionId) => api.get(`/contracts/${id}/download_transaction_pdf/${transactionId}/`, { responseType: 'blob' }),
+    getTransactions: (id) => api.get(`/contracts/${id}/transactions/`),
+    updateTransaction: (id, transactionId, data) => api.patch(`/contracts/${id}/update_transaction/${transactionId}/`, data),
+    checkNumber: (params) => api.get('/contracts/check-number/', { params }),
+    getPublicDetail: (token) => api.get('/contracts/public_detail/', { params: { token } }),
 };
-
 
 export default contractService;

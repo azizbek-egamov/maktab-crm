@@ -24,6 +24,9 @@ import InstagramStats from './pages/instagram/InstagramStats';
 import InstagramCallback from './pages/instagram/InstagramCallback';
 import GoogleSheets from './pages/google-sheets/GoogleSheets';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import PublicContractDetail from './pages/public/PublicContractDetail';
+import ContractsList from './pages/contracts/ContractsList';
+import ContractSchedule from './pages/contracts/ContractSchedule';
 import StudentsList from './pages/students/StudentsList';
 import StudentDetails from './pages/students/StudentDetails';
 import ClassesPage from './pages/classes/ClassesPage';
@@ -48,6 +51,7 @@ function App() {
                         <Routes>
                             {/* Public Routes */}
                             <Route path="/f/:uuid" element={<PublicFormPage />} />
+                            <Route path="/public/contract/:token" element={<PublicContractDetail />} />
                             <Route path="/privacy" element={<PrivacyPolicy />} />
 
                             <Route path="/login" element={<Login />} />
@@ -77,6 +81,11 @@ function App() {
                             <Route path="/forms/:id/edit" element={<ProtectedLayout allowedRoles={['admin']}><FormBuilder /></ProtectedLayout>} />
                             <Route path="/forms/:id/submissions" element={<ProtectedLayout allowedRoles={['admin']}><FormSubmissions /></ProtectedLayout>} />
                             <Route path="/forms/:id/preview" element={<PublicFormPage />} />
+
+                            {/* Shartnomalar va To'lov Grafigi */}
+                            <Route path="/contracts" element={<ProtectedLayout allowedRoles={['admin', 'registrator', 'teacher', 'manager']}><ContractsList /></ProtectedLayout>} />
+                            <Route path="/contracts/:id/schedule" element={<ProtectedLayout allowedRoles={['admin', 'registrator', 'teacher', 'manager']}><ContractSchedule /></ProtectedLayout>} />
+                            <Route path="/contracts/:id" element={<ProtectedLayout allowedRoles={['admin', 'registrator', 'teacher', 'manager']}><ContractSchedule /></ProtectedLayout>} />
 
                             {/* O'quvchilar, Sinflar va Davomat */}
                             <Route path="/students" element={<ProtectedLayout allowedRoles={['admin', 'registrator', 'teacher']}><StudentsList /></ProtectedLayout>} />

@@ -18,6 +18,7 @@ import {
     Tag,
     X,
     Trash2,
+    Edit2,
     ArrowUpRight,
     ArrowDownRight,
     Banknote
@@ -36,6 +37,12 @@ import '../students/Students.css';
 
 import '../Dashboard.css';
 import './FinanceDashboard.css';
+
+const PRESET_COLORS = [
+    '#ef4444', '#f97316', '#f59e0b', '#10b981', 
+    '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', 
+    '#ec4899', '#64748b'
+];
 
 const FinanceDashboard = () => {
     usePageTitle('Moliya va Kassa');
@@ -56,10 +63,15 @@ const FinanceDashboard = () => {
     // Modallar
     const [isTxModalOpen, setIsTxModalOpen] = useState(false);
     const [txModalType, setTxModalType] = useState('expense'); // 'income' | 'expense'
+    const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+    const [catTab, setCatTab] = useState('expense'); // 'expense' | 'income'
+    const [editingCategory, setEditingCategory] = useState(null);
+    const [categoryForm, setCategoryForm] = useState({ name: '', category_type: 'expense', color: '#ef4444', code: '' });
+    const [categorySubmitting, setCategorySubmitting] = useState(false);
     const [isExcelModalOpen, setIsExcelModalOpen] = useState(false);
     const [deleteModal, setDeleteModal] = useState({ open: false, tx: null });
 
-    useBodyScrollLock(isTxModalOpen || deleteModal.open);
+    useBodyScrollLock(isTxModalOpen || isCategoryModalOpen || deleteModal.open);
 
     // Form holati
     const [txForm, setTxForm] = useState({
@@ -114,10 +126,11 @@ const FinanceDashboard = () => {
 
     const openTxModal = (type) => {
         setTxModalType(type);
+        const matchingCats = categories.filter(c => c.category_type === type);
         setTxForm({
             amount: '',
             title: '',
-            category: categories[0]?.id || '',
+            category: matchingCats[0]?.id || '',
             account: accounts[0]?.id || '',
             payment_method: 'cash',
             date: new Date().toISOString().slice(0, 10),
@@ -151,6 +164,107 @@ const FinanceDashboard = () => {
         }
     };
 
+    const openCategoryManager = (initialTab = 'expense') => {
+        const activeType = (initialTab === 'income' || initialTab === 'expense') ? initialTab : 'expense';
+        setCatTab(activeType);
+        setEditingCategory(null);
+        setCategoryForm({
+            name: '',
+            category_type: activeType,
+            color: activeType === 'income' ? '#10b981' : '#ef4444',
+            code: ''
+        });
+        setIsCategoryModalOpen(true);
+    };
+
+    const switchCatTab = (tab) => {
+        setCatTab(tab);
+        setEditingCategory(null);
+        setCategoryForm({
+            name: '',
+            category_type: tab,
+            color: tab === 'income' ? '#10b981' : '#ef4444',
+            code: ''
+        });
+    };
+
+    const handleSaveCategory = async (e) => {
+        e.preventDefault();
+        if (!categoryForm.name.trim()) {
+            toast.warning("Kategoriya nomini kiriting");
+            return;
+        }
+        setCategorySubmitting(true);
+        try {
+            if (editingCategory) {
+                await financeService.updateCategory(editingCategory.id, {
+                    ...categoryForm,
+                    category_type: catTab
+                });
+                toast.success("Kategoriya yangilandi!");
+            } else {
+                const res = await financeService.createCategory({
+                    ...categoryForm,
+                    category_type: catTab
+                });
+                toast.success("Yangi kategoriya qo'shildi!");
+                if (isTxModalOpen && txModalType === catTab) {
+                    setTxForm(prev => ({ ...prev, category: res.data.id }));
+                }
+            }
+            setCategoryForm({
+                name: '',
+                category_type: catTab,
+                color: catTab === 'income' ? '#10b981' : '#ef4444',
+                code: ''
+            });
+            setEditingCategory(null);
+            const catRes = await financeService.getCategories();
+            setCategories(catRes.data.results || catRes.data || []);
+            fetchData();
+        } catch (err) {
+            console.error("Kategoriya saqlashda xatolik:", err);
+            toast.error("Kategoriyani saqlashda xatolik yuz berdi");
+        } finally {
+            setCategorySubmitting(false);
+        }
+    };
+
+    const handleDeleteCategory = async (id) => {
+        if (!window.confirm("Rostdan ham ushbu kategoriyani o'chirmoqchimisiz?")) return;
+        try {
+            await financeService.deleteCategory(id);
+            toast.success("Kategoriya o'chirildi");
+            const catRes = await financeService.getCategories();
+            setCategories(catRes.data.results || catRes.data || []);
+            fetchData();
+        } catch (err) {
+            console.error("Kategoriya o'chirishda xatolik:", err);
+            toast.error("Kategoriyani o'chirib bo'lmadi");
+        }
+    };
+
+    const startEditCategory = (cat) => {
+        setEditingCategory(cat);
+        setCatTab(cat.category_type || 'expense');
+        setCategoryForm({
+            name: cat.name || '',
+            category_type: cat.category_type || 'expense',
+            color: cat.color || '#ef4444',
+            code: cat.code || ''
+        });
+    };
+
+    const cancelEditCategory = () => {
+        setEditingCategory(null);
+        setCategoryForm({
+            name: '',
+            category_type: catTab,
+            color: catTab === 'income' ? '#10b981' : '#ef4444',
+            code: ''
+        });
+    };
+
     const handleDeleteTransaction = async (id) => {
         try {
             await financeService.deleteTransaction(id);
@@ -181,6 +295,14 @@ const FinanceDashboard = () => {
                     <p className="page-subtitle">Daromadlar, xarajatlar va kassa balansi boshqaruvi</p>
                 </div>
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={openCategoryManager}
+                    >
+                        <Tag size={18} color="var(--accent-primary)" />
+                        Kategoriyalar
+                    </button>
                     <button
                         type="button"
                         className="btn-secondary"
@@ -535,20 +657,31 @@ const FinanceDashboard = () => {
                                         />
                                     </div>
 
-                                    {txModalType === 'expense' && (
-                                        <div className="form-group">
-                                            <label>Xarajat Kategoriyasi</label>
-                                            <select
-                                                value={txForm.category}
-                                                onChange={(e) => setTxForm({ ...txForm, category: e.target.value })}
+                                    <div className="form-group">
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                            <label style={{ margin: 0 }}>
+                                                {txModalType === 'income' ? "Kirdi (Daromad) Kategoriyasi" : "Xarajat (Chiqim) Kategoriyasi"}
+                                            </label>
+                                            <button
+                                                type="button"
+                                                className="quick-add-link-btn"
+                                                onClick={() => openCategoryManager(txModalType)}
                                             >
-                                                <option value="">Tanlang...</option>
-                                                {categories.map((c) => (
+                                                <Plus size={13} /> Yangi kategoriya
+                                            </button>
+                                        </div>
+                                        <select
+                                            value={txForm.category}
+                                            onChange={(e) => setTxForm({ ...txForm, category: e.target.value })}
+                                        >
+                                            <option value="">Tanlang...</option>
+                                            {categories
+                                                .filter(c => (c.category_type || 'expense') === txModalType)
+                                                .map((c) => (
                                                     <option key={c.id} value={c.id}>{c.name}</option>
                                                 ))}
-                                            </select>
-                                        </div>
-                                    )}
+                                        </select>
+                                    </div>
 
                                     <div className="form-group">
                                         <label>Kassa / Hisob</label>
@@ -649,6 +782,174 @@ const FinanceDashboard = () => {
                                 onClick={() => handleDeleteTransaction(deleteModal.tx.id)}
                             >
                                 O'chirish
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Kategoriyalarni Boshqarish Modali */}
+            {isCategoryModalOpen && createPortal(
+                <div className="modal-overlay" onClick={() => setIsCategoryModalOpen(false)}>
+                    <div className="modal-content modal-form animate-scaleUp" style={{ maxWidth: '540px' }} onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Tag size={20} color="var(--accent-primary)" />
+                                Moliya Kategoriyalari
+                            </h3>
+                            <button className="modal-close-btn" onClick={() => setIsCategoryModalOpen(false)}>
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="modal-body" style={{ padding: '20px' }}>
+                            {/* Kirim va Chiqim Tablari */}
+                            <div className="cat-modal-tabs">
+                                <button
+                                    type="button"
+                                    className={`cat-modal-tab ${catTab === 'expense' ? 'active expense' : ''}`}
+                                    onClick={() => switchCatTab('expense')}
+                                >
+                                    <TrendingDown size={16} />
+                                    Chiqim (Xarajat)
+                                    <span className="cat-count">
+                                        {categories.filter(c => (c.category_type || 'expense') === 'expense').length}
+                                    </span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className={`cat-modal-tab ${catTab === 'income' ? 'active income' : ''}`}
+                                    onClick={() => switchCatTab('income')}
+                                >
+                                    <TrendingUp size={16} />
+                                    Kirdi (Daromad)
+                                    <span className="cat-count">
+                                        {categories.filter(c => c.category_type === 'income').length}
+                                    </span>
+                                </button>
+                            </div>
+
+                            {/* Kategoriya qo'shish / tahrirlash formasi */}
+                            <form onSubmit={handleSaveCategory} className="cat-form-card">
+                                <div className="cat-form-header">
+                                    <span>
+                                        {editingCategory 
+                                            ? `✏️ ${catTab === 'income' ? 'Kirim' : 'Chiqim'} kategoriyasini tahrirlash` 
+                                            : `➕ Yangi ${catTab === 'income' ? 'Kirim' : 'Chiqim'} kategoriyasi`}
+                                    </span>
+                                    {editingCategory && (
+                                        <button
+                                            type="button"
+                                            className="quick-add-link-btn"
+                                            onClick={cancelEditCategory}
+                                        >
+                                            Bekor qilish
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="form-group" style={{ marginBottom: '12px' }}>
+                                    <label style={{ fontSize: '12px' }}>Kategoriya nomi*</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder={catTab === 'income' ? "Masalan: Kurs to'lovi, Grant, Homiylik" : "Masalan: Oylik maosh, Ijara, Reklama"}
+                                        value={categoryForm.name}
+                                        onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                                    />
+                                </div>
+                                
+                                {/* Rang tanlash */}
+                                <div className="form-group" style={{ marginBottom: '14px' }}>
+                                    <label style={{ fontSize: '12px' }}>Kategoriya rangi</label>
+                                    <div className="cat-color-picker-wrap">
+                                        {PRESET_COLORS.map(c => (
+                                            <button
+                                                key={c}
+                                                type="button"
+                                                className={`cat-color-swatch ${categoryForm.color === c ? 'selected' : ''}`}
+                                                style={{ background: c }}
+                                                onClick={() => setCategoryForm({ ...categoryForm, color: c })}
+                                            />
+                                        ))}
+                                        <input
+                                            type="color"
+                                            value={categoryForm.color}
+                                            onChange={(e) => setCategoryForm({ ...categoryForm, color: e.target.value })}
+                                            className="cat-color-custom-input"
+                                            title="Maxsus rang tanlash"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                                    <button
+                                        type="submit"
+                                        className="btn-primary"
+                                        style={{
+                                            padding: '8px 18px',
+                                            fontSize: '13px',
+                                            background: catTab === 'income' 
+                                                ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' 
+                                                : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                                        }}
+                                        disabled={categorySubmitting}
+                                    >
+                                        {categorySubmitting ? "Saqlanmoqda..." : editingCategory ? "Saqlash" : "Qo'shish"}
+                                    </button>
+                                </div>
+                            </form>
+
+                            {/* Mavjud kategoriyalar ro'yxati */}
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '10px' }}>
+                                Mavjud {catTab === 'income' ? 'kirim' : 'chiqim'} kategoriyalari:
+                            </div>
+
+                            <div className="category-manager-list">
+                                {categories.filter(c => (c.category_type || 'expense') === catTab).length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '24px 16px', color: 'var(--text-secondary)', fontSize: '13px', background: 'var(--bg-secondary)', borderRadius: '10px', border: '1px dashed var(--border-color)' }}>
+                                        Hozircha {catTab === 'income' ? 'kirim' : 'chiqim'} kategoriyalari yo'q. Yuqoridagi formadan yangi kategoriya qo'shing.
+                                    </div>
+                                ) : (
+                                    categories
+                                        .filter(c => (c.category_type || 'expense') === catTab)
+                                        .map((cat) => (
+                                            <div key={cat.id} className="category-manager-item">
+                                                <div className="category-item-info">
+                                                    <span className="category-color-dot" style={{ background: cat.color || (catTab === 'income' ? '#10b981' : '#ef4444') }} />
+                                                    <span className="category-item-name">{cat.name}</span>
+                                                </div>
+                                                <div className="category-item-actions">
+                                                    <button
+                                                        type="button"
+                                                        className="btn-icon"
+                                                        onClick={() => startEditCategory(cat)}
+                                                        title="Tahrirlash"
+                                                        style={{ padding: '6px' }}
+                                                    >
+                                                        <Edit2 size={14} color="var(--accent-primary)" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn-icon btn-delete"
+                                                        onClick={() => handleDeleteCategory(cat.id)}
+                                                        title="O'chirish"
+                                                        style={{ padding: '6px' }}
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                )}
+                            </div>
+                        </div>
+                        <div className="modal-actions" style={{ padding: '12px 20px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                                type="button"
+                                className="btn-secondary"
+                                onClick={() => setIsCategoryModalOpen(false)}
+                            >
+                                Yopish
                             </button>
                         </div>
                     </div>

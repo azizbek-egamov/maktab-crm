@@ -319,8 +319,8 @@ const ContractsList = () => {
                                     <tr>
                                         <th>#</th>
                                         <th>Shartnoma</th>
-                                        <th>Mijoz</th>
-                                        <th>Xonadon</th>
+                                        <th>O'quvchi</th>
+                                        <th>Sinf</th>
                                         <th>Umumiy summa</th>
                                         <th>Qoldiq</th>
                                         <th>Status</th>
@@ -350,11 +350,11 @@ const ContractsList = () => {
                                             >
                                                 <td className="cell-number">{(page - 1) * 20 + index + 1}</td>
                                                 <td style={{ fontWeight: '600' }}>#{contract.contract_number}</td>
-                                                <td className="cell-name">{contract.client_name}</td>
-                                                <td>{contract.building_name} - {contract.home_number}-uy</td>
-                                                <td>{formatPrice(contract.total_price)}</td>
-                                                <td style={{ color: contract.remaining_balance > 0 ? '#ef4444' : '#10b981', fontWeight: '500' }}>
-                                                    {formatPrice(contract.remaining_balance)}
+                                                <td className="cell-name">{contract.student_name || contract.client_name}</td>
+                                                <td>{contract.class_name || "Sinf biriktirilmagan"}</td>
+                                                <td>{formatPrice(contract.total_price || contract.total_amount)}</td>
+                                                <td style={{ color: (contract.remaining_balance ?? contract.remaining_debt) > 0 ? '#ef4444' : '#10b981', fontWeight: '500' }}>
+                                                    {formatPrice(contract.remaining_balance ?? contract.remaining_debt)}
                                                 </td>
                                                 <td>{getStatusBadge(contract.status)}</td>
                                                 <td onClick={(e) => e.stopPropagation()}>

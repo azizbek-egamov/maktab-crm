@@ -15,6 +15,7 @@ import { formatDateInput, isValidDateStr, parseUIDateToApi, formatApiDateToUI } 
 import { formatPhoneInput, parsePhoneToApi, formatApiPhoneToUI } from '../../utils/phoneFormatter';
 import { formatPrice, parsePrice } from '../../utils/priceFormatter';
 import useBodyScrollLock from '../../hooks/useBodyScrollLock';
+import StudentContractSchedule from './components/StudentContractSchedule';
 import './Students.css';
 
 const TABS = [
@@ -122,6 +123,15 @@ const StudentDetails = () => {
             navigate('/students');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const refreshStudentData = async () => {
+        try {
+            const res = await studentService.get(id);
+            setStudent(res.data);
+        } catch {
+            // silent update
         }
     };
 
@@ -544,23 +554,10 @@ const StudentDetails = () => {
                     {tab === 'payment' && (
                         <>
                             {activeContract ? (
-                                <div style={{ marginBottom: 24 }}>
-                                    <div className="info-grid" style={{ marginBottom: 16 }}>
-                                        <div className="info-item"><label>Shartnoma</label><span>{activeContract.contract_number}</span></div>
-                                        <div className="info-item"><label>Oylik</label><span>{formatMoney(activeContract.monthly_fee)}</span></div>
-                                        <div className="info-item"><label>Jami</label><span>{formatMoney(activeContract.total_amount)}</span></div>
-                                        <div className="info-item"><label>To'langan</label><span>{formatMoney(activeContract.paid_amount)}</span></div>
-                                        <div className="info-item"><label>Qolgan</label><span style={{ color: activeContract.is_debtor ? '#dc2626' : 'inherit' }}>{formatMoney(activeContract.remaining_debt)}</span></div>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: 12 }}>
-                                        <button className="btn-secondary" onClick={() => handleEditContractClick(activeContract)}>
-                                            <Edit size={14} /> Shartnomani tahrirlash
-                                        </button>
-                                        <button className="btn-secondary" onClick={() => handleShowPdf(activeContract.id)}>
-                                            To'lov grafigini ko'rish
-                                        </button>
-                                    </div>
-                                </div>
+                                <StudentContractSchedule 
+                                    contractId={activeContract.id} 
+                                    onContractUpdate={refreshStudentData} 
+                                />
                             ) : (
                                 <form onSubmit={createContract} style={{ marginBottom: 24, padding: 20, background: 'var(--bg-secondary)', borderRadius: 12 }}>
                                     <h4 style={{ margin: '0 0 16px' }}>Shartnoma yaratish</h4>
@@ -596,50 +593,6 @@ const StudentDetails = () => {
                                     </div>
                                     <button type="submit" className="btn-primary" style={{ marginTop: 12 }}>Shartnoma yaratish</button>
                                 </form>
-                            )}
-                            {activeContract && (
-                                <>
-                                    <h4>To'lov qo'shish</h4>
-                                    <div className="form-grid" style={{ marginTop: 12 }}>
-                                        <div className="form-group"><label>Summa</label>
-                                            <input type="text" placeholder="100 000" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: formatPrice(e.target.value) })} /></div>
-                                        <div className="form-group"><label>Usul</label>
-                                            <select value={paymentForm.method} onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}>
-                                                <option value="cash">Naqd</option>
-                                                <option value="card">Karta</option>
-                                                <option value="transfer">O'tkazma</option>
-                                                <option value="click">Click/Payme</option>
-                                            </select></div>
-                                        <div className="form-group" style={{ gridColumn: '1 / -1' }}><label>Izoh</label>
-                                            <input type="text" placeholder="Qo'shimcha izoh yoki ma'lumotlar..." value={paymentForm.note} onChange={(e) => setPaymentForm({ ...paymentForm, note: e.target.value })} /></div>
-                                    </div>
-                                    <button className="btn-primary" style={{ marginTop: 12 }} onClick={() => addPayment(activeContract.id)}>To'lov kiritish</button>
-                                    {activeContract.payments?.length > 0 && (
-                                        <table className="data-table" style={{ marginTop: 24 }}>
-                                            <thead><tr><th>Sana</th><th>Summa</th><th>Usul</th><th>Izoh</th><th style={{ width: 100 }}>Harakatlar</th></tr></thead>
-                                            <tbody>
-                                                {activeContract.payments.map((p) => (
-                                                    <tr key={p.id}>
-                                                        <td>{p.payment_date}</td>
-                                                        <td>{formatMoney(p.amount)}</td>
-                                                        <td>{PAYMENT_METHOD_LABELS[p.method] || p.method}</td>
-                                                        <td>{p.note || '—'}</td>
-                                                        <td>
-                                                            <div style={{ display: 'flex', gap: 8 }}>
-                                                                <button className="btn-secondary" style={{ padding: 6 }} onClick={() => handleEditPaymentClick(p)} title="Tahrirlash">
-                                                                    <Edit size={14} />
-                                                                </button>
-                                                                <button className="btn-secondary" style={{ padding: 6, color: '#dc2626' }} onClick={() => handleDeletePayment(p.id)} title="Bekor qilish">
-                                                                    <Trash2 size={14} />
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    )}
-                                </>
                             )}
                         </>
                     )}

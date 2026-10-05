@@ -1,11 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
-import { contractService } from '../../services/contracts';
+import { contractService } from '../../../services/contracts';
 import {
-    ChevronLeftIcon,
     DollarSignIcon,
     CalendarIcon,
     DownloadIcon,
@@ -14,20 +12,15 @@ import {
     CloseIcon,
     EditIcon,
     HistoryIcon
-} from './ContractIcons';
-import './ContractSchedule.css';
-import usePageTitle from '../../hooks/usePageTitle';
-import PaymentHistoryModal from './components/PaymentHistoryModal';
-import PaymentModalForm from './components/PaymentModalForm';
-import CustomPaymentModal from './components/CustomPaymentModal';
-import GlobalTransactionModal from './components/GlobalTransactionModal';
-import AdminEditModal from './components/AdminEditModal';
+} from '../../contracts/ContractIcons';
+import '../../contracts/ContractSchedule.css';
+import PaymentHistoryModal from '../../contracts/components/PaymentHistoryModal';
+import PaymentModalForm from '../../contracts/components/PaymentModalForm';
+import CustomPaymentModal from '../../contracts/components/CustomPaymentModal';
+import GlobalTransactionModal from '../../contracts/components/GlobalTransactionModal';
+import AdminEditModal from '../../contracts/components/AdminEditModal';
 
-const ContractSchedule = () => {
-    const { id } = useParams();
-    const navigate = useNavigate();
-    usePageTitle("To'lovlar jadvali");
-
+const StudentContractSchedule = ({ contractId, onContractUpdate }) => {
     const [loading, setLoading] = useState(true);
     const [contract, setContract] = useState(null);
     const [payments, setPayments] = useState([]);
@@ -52,17 +45,18 @@ const ContractSchedule = () => {
     const [showTransactionModal, setShowTransactionModal] = useState(false);
 
     const loadData = async () => {
+        if (!contractId) return;
         try {
             const [contractRes, paymentsRes] = await Promise.all([
-                contractService.get(id),
-                contractService.getPayments(id)
+                contractService.get(contractId),
+                contractService.getPayments(contractId)
             ]);
             setContract(contractRes.data);
             const pData = Array.isArray(paymentsRes.data) ? paymentsRes.data : [];
             setPayments(pData);
             setEditablePayments(JSON.parse(JSON.stringify(pData)));
         } catch (error) {
-            toast.error("Ma'lumotlarni yuklashda xatolik");
+            toast.error("To'lovlar jadvalini yuklashda xatolik");
             console.error(error);
         } finally {
             setLoading(false);
@@ -72,21 +66,18 @@ const ContractSchedule = () => {
     useEffect(() => {
         loadData();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [id]);
+    }, [contractId]);
 
-    // Format price with spaces (1000000 → 1 000 000)
     const formatPrice = (price) => {
         return new Intl.NumberFormat('uz-UZ').format(Math.round(price || 0)) + " so'm";
     };
 
-    // Format input value with spaces for display
     const formatInputPrice = (value) => {
         if (value === null || value === undefined || value === '') return '';
         const numValue = parseInt(String(value).replace(/\s/g, '').replace(/\D/g, '')) || 0;
         return new Intl.NumberFormat('uz-UZ').format(numValue);
     };
 
-    // Parse formatted input back to number
     const parseInputPrice = (value) => {
         return parseInt(String(value).replace(/\s/g, '').replace(/\D/g, '')) || 0;
     };
@@ -100,8 +91,6 @@ const ContractSchedule = () => {
     };
 
     // --- SMART LOGIC ---
-
-    // Maqsadli summa - qolgan qarz (0-oy bundan mustasno, bu boshlang'ich to'lov)
     const targetAmount = useMemo(() => {
         if (!contract || !Array.isArray(editablePayments)) return 0;
         const initialPayment = editablePayments.find(p => p.month_number === 0);
@@ -110,7 +99,6 @@ const ContractSchedule = () => {
         return contractTotal - initialAmount;
     }, [contract, editablePayments]);
 
-    // Hozirgi jami (barcha oylik to'lovlar yig'indisi, 0-oysiz)
     const currentTotal = useMemo(() => {
         if (!Array.isArray(editablePayments)) return 0;
         return editablePayments
@@ -134,12 +122,10 @@ const ContractSchedule = () => {
 
         const currentMonthNum = updated[idx].month_number;
 
-        // 1. Joriy oydan OLDINGI barcha oylar summasini hisoblaymiz
         const sumBefore = updated
             .filter(p => p.month_number < currentMonthNum)
             .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
 
-        // 2. Maksimal ruxsat etilgan summa
         const maxAllowed = Math.max(0, totalSchoolPrice - sumBefore);
         const val = Math.min(inputValue, maxAllowed);
 
@@ -147,25 +133,17 @@ const ContractSchedule = () => {
             toast.warning(`Maksimal summa: ${formatInputPrice(Math.round(maxAllowed))} so'm`);
         }
 
-        // 3. Joriy oyni yangilaymiz
         updated[idx].amount = val;
         updated[idx].remaining = val - parseFloat(updated[idx].amount_paid || 0);
 
-        // 4. Keyingi oylarni topamiz
         const subsequentMonths = updated.filter(p => p.month_number > currentMonthNum);
-
-        // 5. Ularning ichidan to'lanmaganlarini (re-distributable) ajratamiz
         const subsequentUnpaid = subsequentMonths.filter(p => parseFloat(p.amount_paid || 0) === 0);
-
-        // 6. Keyingi oylar ichida allaqachon to'langanlar bo'lsa, ularni summadan ayiramiz
         const paidSubsequentSum = subsequentMonths
             .filter(p => parseFloat(p.amount_paid || 0) > 0)
             .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
 
-        // 7. Taqsimlanishi kerak bo'lgan qoldiq summa
         const remainingToDistribute = Math.max(0, totalSchoolPrice - sumBefore - val - paidSubsequentSum);
 
-        // 8. Taqsimlash jarayoni
         if (subsequentUnpaid.length > 0) {
             if (remainingToDistribute <= 0) {
                 subsequentUnpaid.forEach(p => {
@@ -200,8 +178,6 @@ const ContractSchedule = () => {
         setEditablePayments(updated);
     };
 
-    // --- API ACTIONS ---
-
     const saveChanges = async () => {
         setProcessingId('saving');
         try {
@@ -210,10 +186,11 @@ const ContractSchedule = () => {
                 amount: p.amount,
                 due_date: p.due_date
             }));
-            await contractService.updateSchedule(id, { changes });
+            await contractService.updateSchedule(contractId, { changes });
             toast.success("O'zgarishlar saqlandi");
             setIsEditMode(false);
             loadData();
+            if (onContractUpdate) onContractUpdate();
         } catch {
             toast.error("Saqlashda xatolik");
         } finally {
@@ -221,7 +198,6 @@ const ContractSchedule = () => {
         }
     };
 
-    // Oylik to'lov qilish
     const handleMakePayment = async () => {
         const amount = parseInputPrice(paymentAmount);
         if (!amount || amount <= 0) {
@@ -237,7 +213,7 @@ const ContractSchedule = () => {
 
         setProcessingId(paymentModal.payment?.id);
         try {
-            await contractService.makePayment(id, {
+            await contractService.makePayment(contractId, {
                 amount: amount,
                 payment_id: paymentModal.payment?.id
             });
@@ -245,6 +221,7 @@ const ContractSchedule = () => {
             setPaymentModal({ open: false, payment: null });
             setPaymentAmount('');
             loadData();
+            if (onContractUpdate) onContractUpdate();
         } catch {
             toast.error("Xatolik yuz berdi");
         } finally {
@@ -252,7 +229,6 @@ const ContractSchedule = () => {
         }
     };
 
-    // Ixtiyoriy (custom) to'lov
     const handleCustomPayment = async () => {
         const amount = parseInputPrice(customAmount);
         if (!amount || amount <= 0) {
@@ -268,11 +244,12 @@ const ContractSchedule = () => {
 
         setProcessingId('custom');
         try {
-            await contractService.makePayment(id, { amount: amount });
+            await contractService.makePayment(contractId, { amount: amount });
             toast.success("To'lov muvaffaqiyatli taqsimlandi");
             setShowCustomModal(false);
             setCustomAmount('');
             loadData();
+            if (onContractUpdate) onContractUpdate();
         } catch {
             toast.error("To'lovda xatolik");
         } finally {
@@ -280,7 +257,6 @@ const ContractSchedule = () => {
         }
     };
 
-    // Qo'shimcha to'lov
     const handleAdditionalPayment = async () => {
         const amount = parseInputPrice(additionalAmount);
         if (!amount || amount <= 0) {
@@ -296,7 +272,7 @@ const ContractSchedule = () => {
 
         setProcessingId('additional');
         try {
-            await contractService.makePayment(id, {
+            await contractService.makePayment(contractId, {
                 amount: amount,
                 payment_id: additionalModal.payment?.id
             });
@@ -304,6 +280,7 @@ const ContractSchedule = () => {
             setAdditionalModal({ open: false, payment: null });
             setAdditionalAmount('');
             loadData();
+            if (onContractUpdate) onContractUpdate();
         } catch {
             toast.error("Xatolik");
         } finally {
@@ -311,7 +288,6 @@ const ContractSchedule = () => {
         }
     };
 
-    // Admin amallar
     const handleAdminAction = async (paymentId, action, amountPaid = 0) => {
         const confirmMsg = action === 'reset'
             ? "Bu to'lovni bekor qilmoqchimisiz?"
@@ -320,7 +296,7 @@ const ContractSchedule = () => {
 
         setProcessingId(paymentId);
         try {
-            await contractService.adminAction(id, {
+            await contractService.adminAction(contractId, {
                 payment_id: paymentId,
                 action: action,
                 amount_paid: parseInputPrice(amountPaid)
@@ -328,6 +304,7 @@ const ContractSchedule = () => {
             toast.success(action === 'reset' ? "To'lov bekor qilindi" : "O'zgarish saqlandi");
             setAdminEditModal({ open: false, payment: null, amount: '' });
             loadData();
+            if (onContractUpdate) onContractUpdate();
         } catch {
             toast.error("Xatolik");
         } finally {
@@ -335,17 +312,14 @@ const ContractSchedule = () => {
         }
     };
 
-    // PDF yuklab olish
     const handleDownloadPdf = async () => {
         try {
             setProcessingId('pdf');
             toast.loading("PDF yaratilmoqda...", { id: 'pdf-loading' });
-
-            const response = await contractService.downloadPdf(id);
+            const response = await contractService.downloadPdf(contractId);
             const blob = new Blob([response.data], { type: 'application/pdf' });
             const url = window.URL.createObjectURL(blob);
             window.open(url, '_blank');
-
             toast.dismiss('pdf-loading');
             toast.success("PDF tayyor!");
         } catch (error) {
@@ -357,17 +331,14 @@ const ContractSchedule = () => {
         }
     };
 
-    // To'lov jadvali PDF
     const handleSchedulePdf = async () => {
         try {
             setProcessingId('schedule-pdf');
             toast.loading("Jadval PDF yaratilmoqda...", { id: 'schedule-pdf-loading' });
-
-            const response = await contractService.downloadSchedulePdf(id);
+            const response = await contractService.downloadSchedulePdf(contractId);
             const blob = new Blob([response.data], { type: 'application/pdf' });
             const url = window.URL.createObjectURL(blob);
             window.open(url, '_blank');
-
             toast.dismiss('schedule-pdf-loading');
             toast.success("Jadval PDF tayyor!");
         } catch (error) {
@@ -379,17 +350,14 @@ const ContractSchedule = () => {
         }
     };
 
-    // To'lov grafigi PDF
     const handleGrafikPdf = async () => {
         try {
             setProcessingId('grafik-pdf');
             toast.loading("To'lov grafigi yaratilmoqda...", { id: 'grafik-pdf-loading' });
-
-            const response = await contractService.downloadGrafikPdf(id);
+            const response = await contractService.downloadGrafikPdf(contractId);
             const blob = new Blob([response.data], { type: 'application/pdf' });
             const url = window.URL.createObjectURL(blob);
             window.open(url, '_blank');
-
             toast.dismiss('grafik-pdf-loading');
             toast.success("To'lov grafigi tayyor!");
         } catch (error) {
@@ -406,23 +374,20 @@ const ContractSchedule = () => {
         return Array.isArray(list) ? list : [];
     }, [isEditMode, editablePayments, payments]);
 
-    if (loading || !contract) return <div className="contract-schedule-page loading-state" style={{ padding: 40, textAlign: 'center' }}>Yuklanmoqda...</div>;
+    if (loading || !contract) return <div style={{ padding: 32, textAlign: 'center' }}>To'lovlar grafigi yuklanmoqda...</div>;
 
     const totalPrice = contract.total_price || contract.total_amount || 0;
     const remainingBalance = contract.remaining_balance ?? contract.remaining_debt ?? 0;
     const totalPaid = contract.paid_amount ?? (totalPrice - remainingBalance);
 
     return (
-        <div className="contract-schedule-page">
-            {/* Header */}
-            <div className="schedule-header">
+        <div className="student-contract-schedule-wrap" style={{ marginTop: 8 }}>
+            {/* Header / Action Controls */}
+            <div className="schedule-header" style={{ marginBottom: 16 }}>
                 <div className="header-left">
-                    <button className="btn-back" onClick={() => contract.student ? navigate(`/students/${contract.student}`) : navigate('/students')}>
-                        <ChevronLeftIcon width="18" height="18" /> Orqaga
-                    </button>
                     <div className="header-title">
                         <div className="title-with-badge">
-                            <h1>Shartnoma #{contract.contract_number}</h1>
+                            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Shartnoma #{contract.contract_number}</h3>
                             {contract.status === 'active' && <span className="contract-status-badge status-active">Faol</span>}
                             {contract.status === 'paid' && <span className="contract-status-badge status-paid">To'liq to'langan</span>}
                             {contract.status === 'cancelled' && <span className="contract-status-badge status-cancelled">Bekor qilingan</span>}
@@ -430,11 +395,6 @@ const ContractSchedule = () => {
                     </div>
                 </div>
                 <div className="header-actions">
-                    <div className="title-with-badge">
-                        <p className="contract-status-badge status-completed" style={{ fontSize: 13, padding: '6px 12px' }}>
-                            {contract.student_name || contract.client_name} {contract.class_name ? `· ${contract.class_name}` : ''}
-                        </p>
-                    </div>
                     {!isEditMode ? (
                         <>
                             <button
@@ -522,7 +482,7 @@ const ContractSchedule = () => {
                         className="stat-card" 
                         style={{ cursor: "pointer" }}
                         onClick={() => window.open(`/public/contract/${contract.token}`, "_blank")}
-                        title="Ota-ona sahifasini ko'rish uchun bosing"
+                        title="Ota-ona sahifasini ochish uchun bosing"
                     >
                         <div style={{ display: "flex", alignItems: "center", gap: "12px", width: "100%" }}>
                             <img 
@@ -584,15 +544,25 @@ const ContractSchedule = () => {
                     </div>
                 </div>
             )}
+
             {/* Payment Schedule Table */}
             <div className="schedule-table-container">
-                <div className="table-header">
-                    <h2>To'lovlar jadvali</h2>
-                    <div className="table-actions">
-                        <button className="btn-outline-primary" onClick={handleGrafikPdf} disabled={processingId === 'grafik-pdf'}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid var(--border-color)' }}>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>To'lovlar jadvali (Oylik grafik)</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto', flexShrink: 0 }}>
+                        <button 
+                            className="btn-outline-primary" 
+                            onClick={handleGrafikPdf} 
+                            disabled={processingId === 'grafik-pdf'}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
                             <DownloadIcon width="14" height="14" /> {processingId === 'grafik-pdf' ? 'Yuklanmoqda...' : "To'lov grafigi (PDF)"}
                         </button>
-                        <button className="btn-outline-primary" onClick={() => setShowCustomModal(true)}>
+                        <button 
+                            className="btn-outline-primary" 
+                            onClick={() => setShowCustomModal(true)}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
                             <DollarSignIcon width="14" height="14" /> Ixtiyoriy to'lov
                         </button>
                     </div>
@@ -823,6 +793,7 @@ const ContractSchedule = () => {
                 isOpen={historyModal.open}
                 onClose={() => setHistoryModal({ open: false, payment: null })}
                 payment={historyModal.payment}
+                contractId={contractId}
                 formatPrice={formatPrice}
             />
 
@@ -830,11 +801,11 @@ const ContractSchedule = () => {
             <GlobalTransactionModal
                 isOpen={showTransactionModal}
                 onClose={() => setShowTransactionModal(false)}
-                contractId={id}
+                contractId={contractId}
                 formatPrice={formatPrice}
             />
         </div>
     );
 };
 
-export default ContractSchedule;
+export default StudentContractSchedule;
